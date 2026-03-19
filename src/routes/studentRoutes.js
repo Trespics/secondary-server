@@ -33,5 +33,6 @@ router.get('/notifications', studentController.getNotifications);
 
 // CATs
 router.get('/cats', studentController.getCATs);
+router.post('/cats/submit', studentController.submitCAT);
 
 module.exports = router;

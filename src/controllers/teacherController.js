@@ -364,7 +364,8 @@ const createAssignment = async (req, res) => {
   const { 
     school_id, class_id, subject_id, lesson_id, 
     strand_id, sub_strand_id, learning_outcome_id,
-    title, instructions, due_date, is_mcq, file_url 
+    title, instructions, due_date, is_mcq, file_url,
+    questions, time_limit_minutes 
   } = req.body;
   const teacher_id = req.user.id;
 
@@ -386,6 +387,8 @@ const createAssignment = async (req, res) => {
           due_date,
           is_mcq,
           file_url,
+          questions: questions || [],
+          time_limit_minutes: time_limit_minutes || 0,
         }])
         .select()
         .single()
@@ -424,7 +427,7 @@ const getMyAssignments = async (req, res) => {
 
 // ─── Create CAT ──────────────────────────────────────────────────────
 const createCAT = async (req, res) => {
-  const { school_id, class_id, subject_id, lesson_id, title, time_limit_minutes, start_time, end_time } = req.body;
+  const { school_id, class_id, subject_id, lesson_id, title, time_limit_minutes, start_time, end_time, questions } = req.body;
   const teacher_id = req.user.id;
 
   try {
@@ -441,6 +444,7 @@ const createCAT = async (req, res) => {
           time_limit_minutes,
           start_time,
           end_time,
+          questions: questions || [],
         }])
         .select()
         .single()

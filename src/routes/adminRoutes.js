@@ -85,4 +85,9 @@ router.post('/learning-outcomes', adminController.createLearningOutcome);
 router.put('/learning-outcomes/:id', adminController.updateLearningOutcome);
 router.delete('/learning-outcomes/:id', adminController.deleteLearningOutcome);
 
+// Grade-level Subjects (Automatic Enrollment)
+router.get('/grade-subjects', adminController.getGradeSubjects);
+router.post('/grade-subjects', adminController.assignSubjectToGrade);
+router.delete('/grade-subjects/:id', adminController.removeGradeSubject);
+
 module.exports = router;

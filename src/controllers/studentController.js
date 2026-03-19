@@ -199,13 +199,17 @@ const getAssignments = async (req, res) => {
     const classIds = (enrollments || []).map(e => e.class_id);
     if (classIds.length === 0) return res.json([]);
 
-    const { data, error } = await supabase.safeQuery(() =>
-      supabase
-        .from('assignments')
-        .select('*, users(name), subjects(name), classes(name)')
-        .in('class_id', classIds)
-        .order('due_date', { ascending: true })
-    );
+    let query = supabase
+      .from('assignments')
+      .select('*, users(name), subjects(name), classes(name)')
+      .in('class_id', classIds)
+      .order('due_date', { ascending: true });
+
+    if (req.query.subject_id) {
+      query = query.eq('subject_id', req.query.subject_id);
+    }
+
+    const { data, error } = await supabase.safeQuery(() => query);
 
     if (error) throw error;
     res.json(data || []);
@@ -216,14 +220,98 @@ const getAssignments = async (req, res) => {
 
 // ─── Submit Assignment ───────────────────────────────────────────────
 const submitAssignment = async (req, res) => {
-  const { assignment_id, file_url } = req.body;
+  const { assignment_id, file_url, answers } = req.body;
   const student_id = req.user.id;
 
   try {
+    let status = 'submitted';
+    let marks_obtained = null;
+    let max_score = null;
+
+    // Auto-grade if it's MCQ
+    if (answers && Array.isArray(answers)) {
+      const { data: assignment, error: assignError } = await supabase.safeQuery(() =>
+        supabase.from('assignments').select('questions, is_mcq').eq('id', assignment_id).single()
+      );
+
+      if (assignError || !assignment) throw new Error('Assignment not found');
+
+      if (assignment.is_mcq && assignment.questions) {
+        let score = 0;
+        const questions = assignment.questions;
+        max_score = questions.length;
+
+        answers.forEach((ans, idx) => {
+          if (questions[idx] && questions[idx].correct_answer === ans) {
+            score++;
+          }
+        });
+
+        marks_obtained = score;
+        status = 'graded';
+      }
+    }
+
     const { data, error } = await supabase.safeQuery(() =>
       supabase
         .from('submissions')
-        .insert([{ assignment_id, student_id, file_url, status: 'submitted' }])
+        .insert([{ 
+          assignment_id, 
+          student_id, 
+          file_url, 
+          answers: answers || [],
+          marks_obtained,
+          max_score,
+          status,
+          submitted_at: new Date().toISOString()
+        }])
+        .select()
+        .single()
+    );
+
+    if (error) throw error;
+    res.status(201).json(data);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
+// ─── Submit CAT ──────────────────────────────────────────────────────
+const submitCAT = async (req, res) => {
+  const { cat_id, answers } = req.body;
+  const student_id = req.user.id;
+
+  try {
+    const { data: cat, error: catError } = await supabase.safeQuery(() =>
+      supabase.from('cats').select('questions').eq('id', cat_id).single()
+    );
+
+    if (catError || !cat) throw new Error('CAT not found');
+
+    let score = 0;
+    const questions = cat.questions || [];
+    const max_score = questions.length;
+
+    if (answers && Array.isArray(answers)) {
+      answers.forEach((ans, idx) => {
+        if (questions[idx] && questions[idx].correct_answer === ans) {
+          score++;
+        }
+      });
+    }
+
+    const { data, error } = await supabase.safeQuery(() =>
+      supabase
+        .from('submissions')
+        .insert([{ 
+          cat_id, 
+          student_id, 
+          answers: answers || [],
+          marks_obtained: score,
+          max_score,
+          status: 'graded',
+          submitted_at: new Date().toISOString()
+        }])
         .select()
         .single()
     );
@@ -365,4 +453,5 @@ module.exports = {
   getResults,
   reportMaterial,
   getPastPapers,
+  submitCAT,
 };

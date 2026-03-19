@@ -761,13 +761,19 @@ const createClass = async (req, res) => {
 
 // ─── Get Classes ─────────────────────────────────────────────────────
 const getClasses = async (req, res) => {
-  logInfo('getClasses', 'Fetching classes', { schoolId: req.user?.school_id });
+  logInfo('getClasses', 'Fetching classes with counts', { schoolId: req.user?.school_id });
 
   try {
+    // We fetch classes and use Supabase's count feature for related tables
+    // Note: This assumes the relationships are correctly defined in Supabase
     const { data, error } = await supabase.safeQuery(() =>
       supabase
         .from('classes')
-        .select('*')
+        .select(`
+          *,
+          enrollments(count),
+          class_subjects(count)
+        `)
         .eq('school_id', req.user.school_id)
         .order('grade_level', { ascending: true })
         .order('name', { ascending: true })
@@ -778,8 +784,15 @@ const getClasses = async (req, res) => {
       throw error;
     }
 
-    logSuccess('getClasses', `Retrieved ${data?.length || 0} classes`);
-    res.json(data);
+    // Map the counts to a flatter structure for easier frontend consumption
+    const classesWithCounts = data.map(c => ({
+      ...c,
+      student_count: c.enrollments?.[0]?.count || 0,
+      subject_count: c.class_subjects?.[0]?.count || 0
+    }));
+
+    logSuccess('getClasses', `Retrieved ${classesWithCounts.length} classes with counts`);
+    res.json(classesWithCounts);
   } catch (error) {
     logError('getClasses', error);
     res.status(500).json({ error: error.message });
@@ -938,6 +951,93 @@ const removeTeacherAssignment = async (req, res) => {
     res.json({ message: 'Assignment removed' });
   } catch (error) {
     logError('removeTeacherAssignment', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// ─── Grade-Wide Subjects ─────────────────────────────────────────────
+const getGradeSubjects = async (req, res) => {
+  const { grade_level } = req.query;
+  const school_id = req.user.school_id;
+
+  logInfo('getGradeSubjects', 'Fetching grade-wide subjects', { grade_level, school_id });
+
+  try {
+    let query = supabase
+      .from('grade_subjects')
+      .select('*, subjects(*)')
+      .eq('school_id', school_id);
+    
+    if (grade_level) {
+      query = query.eq('grade_level', grade_level);
+    }
+
+    const { data, error } = await supabase.safeQuery(() => query.order('grade_level'));
+    
+    if (error) {
+      logError('getGradeSubjects', error, { grade_level });
+      throw error;
+    }
+
+    logSuccess('getGradeSubjects', 'Grade subjects fetched successfully', { count: data.length });
+    res.json(data);
+  } catch (error) {
+    logError('getGradeSubjects', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const assignSubjectToGrade = async (req, res) => {
+  const { grade_level, subject_id } = req.body;
+  const school_id = req.user.school_id;
+
+  logInfo('assignSubjectToGrade', 'Assigning subject to grade level', { grade_level, subject_id, school_id });
+
+  if (!grade_level || !subject_id) {
+    return res.status(400).json({ error: 'Grade level and subject ID are required' });
+  }
+
+  try {
+    const { data, error } = await supabase.safeQuery(() =>
+      supabase
+        .from('grade_subjects')
+        .upsert({ school_id, grade_level, subject_id }, { onConflict: 'school_id,grade_level,subject_id' })
+        .select()
+        .single()
+    );
+
+    if (error) {
+      logError('assignSubjectToGrade', error, { grade_level, subject_id });
+      throw error;
+    }
+
+    logSuccess('assignSubjectToGrade', 'Subject assigned to grade successfully', { id: data.id });
+    res.status(201).json(data);
+  } catch (error) {
+    logError('assignSubjectToGrade', error);
+    res.status(400).json({ error: error.message });
+  }
+};
+
+const removeGradeSubject = async (req, res) => {
+  const { id } = req.params;
+  
+  logInfo('removeGradeSubject', 'Removing grade-wide subject association', { id });
+
+  try {
+    const { error } = await supabase.safeQuery(() => 
+      supabase.from('grade_subjects').delete().eq('id', id)
+    );
+    
+    if (error) {
+      logError('removeGradeSubject', error, { id });
+      throw error;
+    }
+
+    logSuccess('removeGradeSubject', 'Association removed successfully', { id });
+    res.json({ message: 'Association removed' });
+  } catch (error) {
+    logError('removeGradeSubject', error);
     res.status(500).json({ error: error.message });
   }
 };
@@ -1915,4 +2015,8 @@ module.exports = {
   flagPastPaper,
   unflagPastPaper,
   deletePastPaperModeration,
+  getGradeSubjects,
+  assignSubjectToGrade,
+  removeGradeSubject,
+
 };
