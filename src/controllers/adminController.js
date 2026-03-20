@@ -868,7 +868,7 @@ const getTeacherAssignments = async (req, res) => {
   try {
     let query = supabase
       .from('class_subjects')
-      .select('*, classes!inner(id, name, school_id), subjects!inner(id, name, code, image_url, description, school_id), users(name)');
+      .select('*, classes!inner(id, name, school_id), subjects!inner(id, name, code, image_url, school_id), users(name)');
     
     if (req.user.school_id) {
       query = query.eq('classes.school_id', req.user.school_id);
@@ -911,7 +911,7 @@ const assignTeacherToClass = async (req, res) => {
     const { data, error } = await supabase.safeQuery(() =>
       supabase
         .from('class_subjects')
-        .upsert({ class_id, subject_id, teacher_id }, { onConflict: 'class_id,subject_id,teacher_id' })
+        .upsert({ class_id, subject_id, teacher_id }, { onConflict: 'class_id,subject_id' })
         .select()
         .single()
     );
@@ -1231,7 +1231,7 @@ const getSubjects = async (req, res) => {
 };
 
 const createSubject = async (req, res) => {
-  const { name, code, image_url, description } = req.body;
+  const { name, code, image_url } = req.body;
   
   logInfo('createSubject', 'Creating new subject', { 
     name, 
@@ -1249,8 +1249,7 @@ const createSubject = async (req, res) => {
       school_id: req.user.school_id,
       name,
       code,
-      image_url,
-      description
+      image_url
     };
 
     const { data, error } = await supabase.safeQuery(() =>
@@ -1276,7 +1275,7 @@ const createSubject = async (req, res) => {
 
 const updateSubject = async (req, res) => {
   const { id } = req.params;
-  const { name, code, image_url, description } = req.body;
+  const { name, code, image_url } = req.body;
   
   logInfo('updateSubject', 'Updating subject', { 
     subjectId: id, 
@@ -1288,7 +1287,7 @@ const updateSubject = async (req, res) => {
     const { data, error } = await supabase.safeQuery(() =>
       supabase
         .from('subjects')
-        .update({ name, code, image_url, description })
+        .update({ name, code, image_url })
         .eq('id', id)
         .eq('school_id', req.user.school_id)
         .select()
@@ -1399,7 +1398,7 @@ const getStrands = async (req, res) => {
 };
 
 const createStrand = async (req, res) => {
-  const { subject_id, name, description } = req.body;
+  const { subject_id, name } = req.body;
   
   logInfo('createStrand', 'Creating new strand', { 
     subject_id, 
@@ -1416,8 +1415,7 @@ const createStrand = async (req, res) => {
     const insertData = { 
       school_id: req.user.school_id, 
       subject_id, 
-      name, 
-      description 
+      name 
     };
 
     const { data, error } = await supabase.safeQuery(() =>
@@ -1447,7 +1445,7 @@ const createStrand = async (req, res) => {
 
 const updateStrand = async (req, res) => {
   const { id } = req.params;
-  const { name, description } = req.body;
+  const { name } = req.body;
   
   logInfo('updateStrand', 'Updating some strand', { 
     strandId: id, 
@@ -1459,7 +1457,7 @@ const updateStrand = async (req, res) => {
     const { data, error } = await supabase.safeQuery(() =>
       supabase
         .from('strands')
-        .update({ name, description })
+        .update({ name })
         .eq('id', id)
         .eq('school_id', req.user.school_id)
         .select()
@@ -1539,7 +1537,7 @@ const getSubStrands = async (req, res) => {
 };
 
 const createSubStrand = async (req, res) => {
-  const { strand_id, name, description } = req.body;
+  const { strand_id, name } = req.body;
   
   logInfo('createSubStrand', 'Creating new sub-strand', { 
     strand_id, 
@@ -1556,8 +1554,7 @@ const createSubStrand = async (req, res) => {
     const insertData = { 
       school_id: req.user.school_id, 
       strand_id, 
-      name, 
-      description 
+      name 
     };
 
     const { data, error } = await supabase.safeQuery(() =>
@@ -1587,7 +1584,7 @@ const createSubStrand = async (req, res) => {
 
 const updateSubStrand = async (req, res) => {
   const { id } = req.params;
-  const { name, description } = req.body;
+  const { name } = req.body;
   
   logInfo('updateSubStrand', 'Updating sub-strand', { 
     subStrandId: id, 
@@ -1599,7 +1596,7 @@ const updateSubStrand = async (req, res) => {
     const { data, error } = await supabase.safeQuery(() =>
       supabase
         .from('sub_strands')
-        .update({ name, description })
+        .update({ name })
         .eq('id', id)
         .eq('school_id', req.user.school_id)
         .select()

@@ -166,8 +166,7 @@ const forgotPassword = async (req, res) => {
     await sendEmail(
       user.email,
       'Reset Your Trespics School Password',
-      emailHtml,
-      { name: "Trespics School", email: process.env.EMAIL_FROM || "noreply@trespics.com" }
+      emailHtml
     );
 
     res.json({ message: 'Reset link sent successfully' });

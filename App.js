@@ -18,6 +18,8 @@ const studentRoutes = require('./src/routes/studentRoutes');
 const uploadRoutes = require('./src/routes/uploadRoutes');
 const superAdminRoutes = require('./src/routes/superAdminRoutes');
 const cbcRoutes = require('./src/routes/cbcRoutes');
+const libraryRoutes = require('./src/routes/libraryRoutes');
+const publicRoutes = require('./src/routes/publicRoutes');
 const { initCronJobs } = require('./src/services/cronService');
 
 
@@ -47,6 +49,8 @@ app.use('/api/student', studentRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/superadmin', superAdminRoutes);
 app.use('/api/cbc', cbcRoutes);
+app.use('/api/library', libraryRoutes);
+app.use('/api/public', publicRoutes);
 
 
 // Base Route

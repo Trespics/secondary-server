@@ -1,6 +1,8 @@
 const bcrypt = require('bcryptjs');
 const supabase = require('../config/supabase');
 const { sendEmail } = require('../services/brevoService');
+const fs = require('fs');
+const path = require('path');
 
 // ─── School Management ────────────────────────────────────────────────
 const createSchool = async (req, res) => {
@@ -174,19 +176,6 @@ const setupInitialSuperAdmin = async (req, res) => {
   }
 
   try {
-    // Double check if superadmin already exists
-    const { count, error: countError } = await supabase.safeQuery(() =>
-      supabase
-        .from('users')
-        .select('id', { count: 'exact', head: true })
-        .eq('role', 'superadmin')
-    );
-
-    if (countError) throw countError;
-    if (count > 0) {
-      return res.status(403).json({ error: 'System already setup. Registration disabled.' });
-    }
-
     const salt = await bcrypt.genSalt(10);
     const password_hash = await bcrypt.hash(password, salt);
 
@@ -271,7 +260,7 @@ const getSubjects = async (req, res) => {
 };
 
 const createSubject = async (req, res) => {
-  const { school_id, name, code, image_url, description } = req.body;
+  const { school_id, name, code, image_url } = req.body;
   if (!school_id || !name) {
     return res.status(400).json({ error: 'School ID and name are required' });
   }
@@ -280,7 +269,7 @@ const createSubject = async (req, res) => {
     const { data, error } = await supabase.safeQuery(() =>
       supabase
         .from('subjects')
-        .insert([{ school_id, name, code, image_url, description }])
+        .insert([{ school_id, name, code, image_url }])
         .select()
         .single()
     );
@@ -294,13 +283,13 @@ const createSubject = async (req, res) => {
 
 const updateSubject = async (req, res) => {
   const { id } = req.params;
-  const { name, code, image_url, description } = req.body;
+  const { name, code, image_url } = req.body;
 
   try {
     const { data, error } = await supabase.safeQuery(() =>
       supabase
         .from('subjects')
-        .update({ name, code, image_url, description })
+        .update({ name, code, image_url })
         .eq('id', id)
         .select()
         .single()
@@ -421,7 +410,7 @@ const getAssignments = async (req, res) => {
   try {
     let query = supabase
       .from('class_subjects')
-      .select('*, classes!inner(id, name, school_id), subjects!inner(id, name, code, image_url, description, school_id), users(name)');
+      .select('*, classes!inner(id, name, school_id), subjects!inner(id, name, code, image_url, school_id), users(name)');
 
     if (school_id) {
       query = query.eq('classes.school_id', school_id);
@@ -449,7 +438,7 @@ const assignSubjectToClass = async (req, res) => {
     const { data, error } = await supabase.safeQuery(() =>
       supabase
         .from('class_subjects')
-        .upsert({ class_id, subject_id, teacher_id }, { onConflict: 'class_id,subject_id,teacher_id' })
+        .upsert({ class_id, subject_id, teacher_id }, { onConflict: 'class_id,subject_id' })
         .select()
         .single()
     );
@@ -468,6 +457,98 @@ const removeAssignment = async (req, res) => {
     if (error) throw error;
     res.json({ message: 'Assignment removed' });
   } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// ─── Contact Messages Management (Superadmin) ────────────────────────
+const getContactMessages = async (req, res) => {
+  try {
+    const { data, error } = await supabase.safeQuery(() =>
+      supabase
+        .from('contact_messages')
+        .select('*')
+        .order('created_at', { ascending: false })
+    );
+
+    if (error) throw error;
+    res.json(data || []);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const replyToContactMessage = async (req, res) => {
+  const { id } = req.params;
+  const { reply_message } = req.body;
+  const admin_id = req.user.id;
+
+  if (!reply_message) {
+    return res.status(400).json({ error: 'Reply message is required' });
+  }
+
+  try {
+    // 1. Fetch original message
+    const { data: contact, error: fetchError } = await supabase.safeQuery(() =>
+      supabase.from('contact_messages').select('*').eq('id', id).single()
+    );
+
+    if (fetchError || !contact) {
+      if (!contact) return res.status(404).json({ error: 'Message not found' });
+      throw fetchError;
+    }
+
+    if (contact.status === 'replied') {
+      return res.status(400).json({ error: 'This message has already been replied to.' });
+    }
+
+    // 2. Read HTML Template
+    const templatePath = path.join(__dirname, '../emails/Reply-email.html');
+    let htmlContent = fs.readFileSync(templatePath, 'utf8');
+
+    // 3. Replace Placeholders
+    const userName = contact.name || 'User';
+    const originalMessage = contact.message;
+    const replyDate = new Date().toLocaleString('en-US', { dateStyle: 'long', timeStyle: 'short' });
+    const ticketId = contact.id.split('-')[0].toUpperCase();
+
+    htmlContent = htmlContent
+      .replace(/{{User_Name}}/g, userName)
+      .replace(/{{Original_Message}}/g, originalMessage)
+      .replace(/{{Admin_Reply_Message}}/g, reply_message)
+      .replace(/{{Reply_Date}}/g, replyDate)
+      .replace(/{{Ticket_ID}}/g, ticketId)
+      .replace(/{{Inbox_Link}}/g, 'https://trespics.com/contact')
+      .replace(/{{Inbox_Link_Plain}}/g, 'https://trespics.com/contact')
+      .replace(/{{Company_Address}}/g, 'Nairobi, Kenya');
+
+    // 4. Send Email
+    await sendEmail(
+      contact.email,
+      `Re: ${contact.subject || 'Your Support Request'}`,
+      htmlContent
+    );
+
+    // 5. Update Database Record
+    const { data: updatedContact, error: updateError } = await supabase.safeQuery(() =>
+      supabase
+        .from('contact_messages')
+        .update({
+          status: 'replied',
+          reply_message,
+          replied_by: admin_id,
+          replied_at: new Date().toISOString()
+        })
+        .eq('id', id)
+        .select()
+        .single()
+    );
+
+    if (updateError) throw updateError;
+
+    res.json({ message: 'Reply sent successfully', contact: updatedContact });
+  } catch (error) {
+    console.error('Reply mail error:', error);
     res.status(500).json({ error: error.message });
   }
 };
@@ -491,5 +572,7 @@ module.exports = {
   getClasses,
   getAssignments,
   assignSubjectToClass,
-  removeAssignment
+  removeAssignment,
+  getContactMessages,
+  replyToContactMessage
 };

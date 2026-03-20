@@ -16,6 +16,8 @@ router.get('/students', teacherController.getMyStudents);
 // Materials
 router.get('/materials', teacherController.getMaterials);
 router.post('/materials', teacherController.uploadMaterial);
+router.put('/materials/:id', teacherController.updateMaterial);
+router.delete('/materials/:id', teacherController.deleteMaterial);
 
 // Past Papers
 router.get('/past-papers', teacherController.getPastPapers);

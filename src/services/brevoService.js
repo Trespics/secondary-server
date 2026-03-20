@@ -19,7 +19,9 @@ const sendEmail = async (to, subject, htmlContent, sender = null) => {
   const sendSmtpEmail = new SibApiV3Sdk.SendSmtpEmail();
   sendSmtpEmail.subject = subject;
   sendSmtpEmail.htmlContent = htmlContent;
-  sendSmtpEmail.sender = sender || { name: "Trespics Academy", email: "noreply@trespics.com" };
+  const defaultSenderEmail = process.env.EMAIL_FROM || "waruijohnkar@gmail.com";
+  const defaultSenderName = process.env.EMAIL_FROM_NAME || "Trespics Academy";
+  sendSmtpEmail.sender = sender || { name: defaultSenderName, email: defaultSenderEmail };
   sendSmtpEmail.to = [{ email: to }];
 
   try {

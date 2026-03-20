@@ -40,5 +40,9 @@ router.delete('/assignments/:id', superAdminController.removeAssignment);
 // Dashboard Stats
 router.get('/stats', superAdminController.getSuperAdminStats);
 
+// Contact Messages
+router.get('/contact-messages', superAdminController.getContactMessages);
+router.post('/contact-messages/:id/reply', superAdminController.replyToContactMessage);
+
 module.exports = router;
 

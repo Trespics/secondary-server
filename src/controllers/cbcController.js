@@ -46,13 +46,13 @@ const getLearningOutcomes = async (req, res) => {
 
 // --- CRUD Operations for Strands ---
 const createStrand = async (req, res) => {
-    const { subject_id, name, description } = req.body;
+    const { subject_id, name } = req.body;
     const school_id = req.user.school_id;
     try {
         const { data, error } = await supabase.safeQuery(() =>
             supabase
                 .from('strands')
-                .insert([{ school_id, subject_id, name, description }])
+                .insert([{ school_id, subject_id, name }])
                 .select()
                 .single()
         );
@@ -65,12 +65,12 @@ const createStrand = async (req, res) => {
 
 const updateStrand = async (req, res) => {
     const { id } = req.params;
-    const { name, description } = req.body;
+    const { name } = req.body;
     try {
         const { data, error } = await supabase.safeQuery(() =>
             supabase
                 .from('strands')
-                .update({ name, description })
+                .update({ name })
                 .eq('id', id)
                 .select()
                 .single()
@@ -97,13 +97,13 @@ const deleteStrand = async (req, res) => {
 
 // --- CRUD Operations for Sub-strands ---
 const createSubStrand = async (req, res) => {
-    const { strand_id, name, description } = req.body;
+    const { strand_id, name } = req.body;
     const school_id = req.user.school_id;
     try {
         const { data, error } = await supabase.safeQuery(() =>
             supabase
                 .from('sub_strands')
-                .insert([{ school_id, strand_id, name, description }])
+                .insert([{ school_id, strand_id, name }])
                 .select()
                 .single()
         );
@@ -116,12 +116,12 @@ const createSubStrand = async (req, res) => {
 
 const updateSubStrand = async (req, res) => {
     const { id } = req.params;
-    const { name, description } = req.body;
+    const { name } = req.body;
     try {
         const { data, error } = await supabase.safeQuery(() =>
             supabase
                 .from('sub_strands')
-                .update({ name, description })
+                .update({ name })
                 .eq('id', id)
                 .select()
                 .single()

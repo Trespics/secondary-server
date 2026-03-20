@@ -199,20 +199,40 @@ const getAssignments = async (req, res) => {
     const classIds = (enrollments || []).map(e => e.class_id);
     if (classIds.length === 0) return res.json([]);
 
-    let query = supabase
-      .from('assignments')
-      .select('*, users(name), subjects(name), classes(name)')
-      .in('class_id', classIds)
-      .order('due_date', { ascending: true });
-
-    if (req.query.subject_id) {
-      query = query.eq('subject_id', req.query.subject_id);
-    }
-
-    const { data, error } = await supabase.safeQuery(() => query);
+    const { data: assignments, error } = await supabase.safeQuery(() =>
+      supabase
+        .from('assignments')
+        .select('*, users(name), subjects(name), classes(name)')
+        .in('class_id', classIds)
+        .order('due_date', { ascending: true })
+    );
 
     if (error) throw error;
-    res.json(data || []);
+
+    // Fetch submissions for these assignments for the current student
+    const assignmentIds = (assignments || []).map(a => a.id);
+    const { data: submissions } = await supabase.safeQuery(() =>
+      supabase
+        .from('submissions')
+        .select('assignment_id, status')
+        .eq('student_id', req.user.id)
+        .in('assignment_id', assignmentIds)
+    );
+
+    // Create a map for quick lookup
+    const submissionMap = (submissions || []).reduce((acc, s) => {
+      acc[s.assignment_id] = s;
+      return acc;
+    }, {});
+
+    // Map submission status back to assignments
+    const processedAssignments = (assignments || []).map(a => ({
+      ...a,
+      submitted: !!submissionMap[a.id],
+      submission_status: submissionMap[a.id]?.status
+    }));
+
+    res.json(processedAssignments);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

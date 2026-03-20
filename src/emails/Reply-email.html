@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="https://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="x-apple-disable-message-reformatting">
+  <title>Trespics • Admin reply</title>
+  <!--[if !mso]><!-->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz@14..32&display=swap" rel="stylesheet">
+  <!--<![endif]-->
+  <style>
+    /* RESET + CLIENT SAFE */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      background-color: #f3f5f9;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      line-height: 1.5;
+      color: #1e1e2f;
+      margin: 0;
+      padding: 0;
+      -webkit-font-smoothing: antialiased;
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+    }
+    td {
+      vertical-align: top;
+    }
+    .wrapper {
+      width: 100%;
+      background-color: #f3f5f9;
+      padding: 30px 15px;
+    }
+    .main-container {
+      max-width: 560px;
+      margin: 0 auto;
+      background-color: #ffffff;
+      border-radius: 24px;
+      overflow: hidden;
+      box-shadow: 0 20px 35px -8px rgba(0,0,0,0.08);
+    }
+    /* header */
+    .header-bg {
+      background: linear-gradient(145deg, #1a2639 0%, #2c3a58 100%);
+      padding: 32px 30px 24px 30px;
+    }
+    .logo {
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+      color: #ffffff;
+    }
+    .logo span {
+      color: #a7c0f8;
+      font-weight: 500;
+    }
+    .header-sub {
+      color: #cbd5e1;
+      font-size: 15px;
+      margin-top: 6px;
+    }
+    /* content */
+    .content-pad {
+      padding: 32px 30px 28px;
+    }
+    .greeting {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 4px;
+      color: #121826;
+    }
+    .user-name {
+      color: #2d3f6e;
+      background: #edf2fb;
+      padding: 2px 8px;
+      border-radius: 30px;
+      font-weight: 500;
+      display: inline-block;
+    }
+    .intro-text {
+      font-size: 15px;
+      color: #3f4a62;
+      margin: 18px 0 20px 0;
+    }
+    /* original message — light card */
+    .original-card {
+      background-color: #f8fafd;
+      border-left: 4px solid #9aaec9;
+      padding: 18px 20px;
+      border-radius: 16px;
+      margin: 22px 0 26px 0;
+    }
+    .label-small {
+      font-size: 13px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      color: #546e7a;
+      margin-bottom: 8px;
+    }
+    .original-message {
+      font-size: 15px;
+      color: #1e2b3f;
+      background: #ffffff;
+      padding: 14px 18px;
+      border-radius: 14px;
+      box-shadow: inset 0 1px 3px rgba(0,0,0,0.02);
+      border: 1px solid #e2eaf1;
+      margin-top: 6px;
+      font-style: normal;
+    }
+    .quote-icon {
+      font-size: 18px;
+      color: #6a7f9f;
+      margin-right: 4px;
+    }
+    /* admin reply — primary box */
+    .admin-reply {
+      background: #f0f5ff;
+      border-radius: 20px;
+      padding: 22px 24px;
+      margin: 28px 0 18px;
+      border: 1px solid #cddff7;
+    }
+    .admin-badge {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+    .admin-avatar {
+      background-color: #1e2f50;
+      color: white;
+      font-weight: 600;
+      font-size: 16px;
+      width: 36px;
+      height: 36px;
+      line-height: 36px;
+      text-align: center;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    .admin-label {
+      font-weight: 700;
+      font-size: 16px;
+      color: #102a4c;
+      letter-spacing: -0.2px;
+    }
+    .admin-message {
+      font-size: 16px;
+      color: #101d33;
+      background: #ffffff;
+      padding: 18px 20px;
+      border-radius: 18px;
+      border: 1px solid #b9d0f0;
+      box-shadow: 0 4px 10px -4px rgba(0, 60, 130, 0.08);
+      margin: 12px 0 5px;
+    }
+    .admin-message p {
+      margin-bottom: 12px;
+    }
+    .admin-message p:last-child {
+      margin-bottom: 0;
+    }
+    /* meta info / date */
+    .meta-line {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 13px;
+      color: #5e6f88;
+      margin: 16px 0 10px;
+      border-top: 1px dashed #d9e2ef;
+      padding-top: 16px;
+    }
+    .dot-sep {
+      width: 4px;
+      height: 4px;
+      background: #a0b8d0;
+      border-radius: 50%;
+    }
+    .ticket-id {
+      font-family: 'SF Mono', 'Menlo', monospace;
+      background: #e8edf5;
+      padding: 2px 8px;
+      border-radius: 20px;
+      font-size: 12px;
+    }
+    .btn {
+      background-color: #1f2f4f;
+      color: white;
+      padding: 14px 24px;
+      border-radius: 40px;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 15px;
+      display: inline-block;
+      margin: 16px 0 8px;
+      border: 1px solid #18233a;
+      box-shadow: 0 4px 8px rgba(0, 20, 50, 0.1);
+    }
+    .btn:hover {
+      background-color: #2a3d66;
+    }
+    .footer {
+      background-color: #f0f4fa;
+      padding: 24px 30px 26px;
+      font-size: 13px;
+      color: #4f5b72;
+      text-align: center;
+      border-top: 1px solid #dee7f2;
+    }
+    .footer a {
+      color: #1f3a6b;
+      text-decoration: underline;
+      font-weight: 500;
+    }
+    .footer-links {
+      margin-top: 14px;
+      display: flex;
+      justify-content: center;
+      gap: 28px;
+    }
+    @media only screen and (max-width: 480px) {
+      .content-pad, .header-bg, .footer { padding-left: 20px; padding-right: 20px; }
+      .admin-reply { padding: 16px; }
+    }
+  </style>
+</head>
+<body style="background-color:#f3f5f9; font-family:'Inter', Helvetica, Arial, sans-serif; margin:0;">
+
+  <!--[if mso]>
+  <style type="text/css">
+    .main-container { border: 1px solid #cfdbe8; }
+    .btn { background: #1f2f4f; }
+    .admin-avatar { background: #1e2f50; }
+  </style>
+  <![endif]-->
+
+  <div class="wrapper" style="background-color:#f3f5f9; padding:30px 15px;">
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation">
+      <tr>
+        <td align="center">
+          <div class="main-container" style="max-width:560px; background:#ffffff; border-radius:24px; box-shadow:0 20px 35px -8px rgba(0,0,0,0.08); overflow:hidden;">
+
+            <!-- header : Trespics -->
+            <div class="header-bg" style="background:linear-gradient(145deg, #1a2639, #2c3a58); padding:32px 30px 24px 30px;">
+              <table width="100%" role="presentation">
+                <tr>
+                  <td style="color:#ffffff;">
+                    <div class="logo" style="font-size:28px; font-weight:700; letter-spacing:-0.3px;">trespics<span style="color:#a7c0f8; font-weight:500;">•</span></div>
+                    <div class="header-sub" style="color:#cbd5e1; font-size:15px; margin-top:6px;">support & conversations</div>
+                  </td>
+                </tr>
+              </table>
+            </div>
+
+            <!-- main content -->
+            <div class="content-pad" style="padding:32px 30px 28px;">
+              
+              <!-- greeting with dynamic name -->
+              <div class="greeting" style="font-size:18px; font-weight:600; color:#121826;">
+                Hello <span class="user-name" style="color:#2d3f6e; background:#edf2fb; padding:2px 8px; border-radius:30px; font-weight:500; display:inline-block;">{{User_Name}}</span>,
+              </div>
+              
+              <div class="intro-text" style="font-size:15px; color:#3f4a62; margin:18px 0 20px 0;">
+                You have received a reply from the Trespics team regarding your recent message.
+              </div>
+
+              <!-- original message (from user) — automatically filled -->
+              <div class="original-card" style="background:#f8fafd; border-left:4px solid #9aaec9; padding:18px 20px; border-radius:16px; margin:22px 0 26px 0;">
+                <div class="label-small" style="font-size:13px; font-weight:600; text-transform:uppercase; letter-spacing:0.4px; color:#546e7a; margin-bottom:8px;">
+                  ⏺ Your original message
+                </div>
+                <div class="original-message" style="font-size:15px; color:#1e2b3f; background:#ffffff; padding:14px 18px; border-radius:14px; border:1px solid #e2eaf1; margin-top:6px;">
+                  <span class="quote-icon" style="font-size:18px; color:#6a7f9f; margin-right:4px;">“</span>{{Original_Message}}<span class="quote-icon" style="font-size:18px; color:#6a7f9f; margin-left:4px;">”</span>
+                </div>
+              </div>
+
+              <!-- ADMIN REPLY SECTION — dynamic content from admin -->
+              <div class="admin-reply" style="background:#f0f5ff; border-radius:20px; padding:22px 24px; margin:28px 0 18px; border:1px solid #cddff7;">
+                <div class="admin-badge" style="display:flex; align-items:center; gap:8px; margin-bottom:14px;">
+                  <span class="admin-avatar" style="background:#1e2f50; color:white; font-weight:600; font-size:16px; width:36px; height:36px; line-height:36px; text-align:center; border-radius:50%; display:inline-block;">A</span>
+                  <span class="admin-label" style="font-weight:700; font-size:16px; color:#102a4c;">Trespics admin · reply</span>
+                </div>
+
+                <div class="admin-message" style="font-size:16px; color:#101d33; background:#ffffff; padding:18px 20px; border-radius:18px; border:1px solid #b9d0f0; box-shadow:0 4px 10px -4px rgba(0,60,130,0.08); margin:12px 0 5px;">
+                  <!-- main reply placeholder — admin typed message -->
+                  <p>{{Admin_Reply_Message}}</p>
+                  <!-- if there are any additional notes, you can add another placeholder, but we keep it clean -->
+                </div>
+
+                <!-- optional: admin signature or small note (static but can be adjusted) -->
+                <div style="margin-top:14px; font-size:14px; color:#28446c; padding-left:6px;">
+                  ⚡️ — directly from your support team
+                </div>
+              </div>
+
+              <!-- meta info: ticket / date (placeholders) -->
+              <div class="meta-line" style="display:flex; align-items:center; gap:12px; font-size:13px; color:#5e6f88; border-top:1px dashed #d9e2ef; padding-top:16px; margin:16px 0 10px;">
+                <span>{{Reply_Date}}</span>
+                <span class="dot-sep" style="width:4px; height:4px; background:#a0b8d0; border-radius:50%; display:inline-block;"></span>
+                <span class="ticket-id" style="background:#e8edf5; padding:2px 8px; border-radius:20px; font-size:12px;">#{{Ticket_ID}}</span>
+              </div>
+
+              <!-- call to action button (optional: go to trespics inbox) -->
+              <table width="100%" role="presentation">
+                <tr>
+                  <td align="center">
+                    <a href="{{Inbox_Link}}" class="btn" style="background-color:#1f2f4f; color:white; padding:14px 24px; border-radius:40px; text-decoration:none; font-weight:600; font-size:15px; display:inline-block; margin:16px 0 8px; border:1px solid #18233a; box-shadow:0 4px 8px rgba(0,20,50,0.1);">View in your inbox →</a>
+                  </td>
+                </tr>
+              </table>
+              <p style="font-size:14px; color:#3f4f6b; margin:10px 0 0 0; text-align:center;">or copy this link: <span style="color:#1f2f4f;">{{Inbox_Link_Plain}}</span></p>
+
+            </div> <!-- end content-pad -->
+
+            <!-- footer -->
+            <div class="footer" style="background:#f0f4fa; padding:24px 30px 26px; font-size:13px; color:#4f5b72; text-align:center; border-top:1px solid #dee7f2;">
+              <div>Trespics – effortless conversations</div>
+              <div style="margin-top:6px;"><a href="#" style="color:#1f3a6b; text-decoration:underline;">help center</a>  ·  <a href="#" style="color:#1f3a6b; text-decoration:underline;">privacy</a></div>
+              <div class="footer-links" style="margin-top:14px; display:flex; justify-content:center; gap:28px;">
+                <span>📬 {{Company_Address}}</span>
+              </div>
+              <div style="margin-top:16px; font-size:12px; color:#6f7d98;">© Trespics · all responses are confidential</div>
+            </div>
+          </div> <!-- main-container -->
+        </td>
+      </tr>
+    </table>
+  </div> <!-- wrapper -->
+
+  <!-- placeholders explanation (hidden in actual email) -->
+  <!-- 
+    Available variables:
+    {{User_Name}} – first name / username
+    {{Original_Message}} – the message sent by user (quoted)
+    {{Admin_Reply_Message}} – the reply text written by admin (supports paragraphs)
+    {{Reply_Date}} – e.g., "May 12, 2025 at 14:32"
+    {{Ticket_ID}} – optional reference number
+    {{Inbox_Link}} – button link to message thread
+    {{Inbox_Link_Plain}} – fallback plain url
+    {{Company_Address}} – physical address if needed
+  -->
+</body>
+</html>
