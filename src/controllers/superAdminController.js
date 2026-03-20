@@ -258,7 +258,7 @@ const getSubjects = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
-
+     
 const createSubject = async (req, res) => {
   const { school_id, name, code, image_url } = req.body;
   if (!school_id || !name) {
