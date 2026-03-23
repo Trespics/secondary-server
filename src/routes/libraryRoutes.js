@@ -8,6 +8,9 @@ router.use(authenticate);
 
 // Search & Discovery
 router.get('/categories', libraryController.getCategories);
+router.get('/authors', libraryController.getAuthors);
+router.get('/publishers', libraryController.getPublishers);
+router.get('/licenses', libraryController.getLicenses);
 router.get('/items', libraryController.getItems);
 router.get('/items/:id', libraryController.getItemById);
 
@@ -17,6 +20,8 @@ router.get('/favorites', libraryController.getFavorites);
 router.post('/reviews', libraryController.addReview);
 router.post('/progress', libraryController.updateProgress);
 router.get('/progress', libraryController.getProgress);
+router.post('/bookmarks', libraryController.toggleBookmark);
+router.get('/bookmarks', libraryController.getBookmarks);
 
 // Admin / Superadmin features
 router.post('/items', authorize(['superadmin']), libraryController.createItem);
