@@ -5,7 +5,21 @@ const fs = require('fs');
 const path = require('path');
 
 // ─── Helper function for consistent logging ─────────────────────────
-// ... rest of helper functions ...
+const logInfo = (context, message, data = {}) => {
+  console.log(`[INFO][${context}] ${message}`, data);
+};
+
+const logWarning = (context, message, data = {}) => {
+  console.warn(`[WARN][${context}] ${message}`, data);
+};
+
+const logError = (context, error, data = {}) => {
+  console.error(`[ERROR][${context}] ${error.message || error}`, data);
+};
+
+const logSuccess = (context, message, data = {}) => {
+  console.log(`[SUCCESS][${context}] ${message}`, data);
+};
 
 // ─── User Registration (Admin registers teachers + students) ─────────
 const registerUser = async (req, res) => {
