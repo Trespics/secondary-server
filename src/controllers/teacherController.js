@@ -609,16 +609,118 @@ const getNotifications = async (req, res) => {
     const { data, error } = await supabase.safeQuery(() =>
       supabase
         .from('notifications')
-        .select('*')
+        .select('*, sender:users!sender_id(name)')
         .or(`recipient_id.eq.${req.user.id},recipient_id.is.null`)
         .order('created_at', { ascending: false })
         .limit(50)
     );
 
     if (error) throw error;
-    res.json(data || []);
+    
+    // Flatten result
+    const processed = (data || []).map(n => ({
+      ...n,
+      sender_name: n.sender?.name || 'System'
+    }));
+
+    res.json(processed);
   } catch (error) {
     res.status(500).json({ error: error.message });
+  }
+};
+
+const createNotification = async (req, res) => {
+  const { title, message, type, recipient_id } = req.body;
+  const sender_id = req.user.id;
+  const school_id = req.user.school_id;
+
+  if (!title || !message) {
+    return res.status(400).json({ error: 'Title and message are required' });
+  }
+
+  try {
+    const { data, error } = await supabase.safeQuery(() =>
+      supabase
+        .from('notifications')
+        .insert([{
+          school_id,
+          sender_id,
+          recipient_id: recipient_id || null, // null means broadcast to school
+          title,
+          message,
+          type: type || 'general',
+          is_read: false
+        }])
+        .select()
+        .single()
+    );
+
+    if (error) throw error;
+    res.status(201).json(data);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
+const deleteNotification = async (req, res) => {
+  const { id } = req.params;
+  const user_id = req.user.id;
+
+  try {
+    const { error } = await supabase.safeQuery(() =>
+      supabase
+        .from('notifications')
+        .delete()
+        .eq('id', id)
+        .eq('sender_id', user_id) // Can only delete their own
+    );
+
+    if (error) throw error;
+    res.json({ message: 'Notification deleted' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const markNotificationAsRead = async (req, res) => {
+  const { id } = req.params;
+  const user_id = req.user.id;
+
+  try {
+    const { data, error } = await supabase.safeQuery(() =>
+      supabase
+        .from('notifications')
+        .update({ is_read: true })
+        .eq('id', id)
+        .or(`recipient_id.eq.${user_id},recipient_id.is.null`)
+        .select()
+        .single()
+    );
+
+    if (error) throw error;
+    res.json(data);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
+const markAllNotificationsAsRead = async (req, res) => {
+  const user_id = req.user.id;
+
+  try {
+    const { data, error } = await supabase.safeQuery(() =>
+      supabase
+        .from('notifications')
+        .update({ is_read: true })
+        .or(`recipient_id.eq.${user_id},recipient_id.is.null`)
+        .eq('is_read', false)
+        .select()
+    );
+
+    if (error) throw error;
+    res.json(data);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
   }
 };
 
@@ -645,4 +747,8 @@ module.exports = {
   uploadPastPaper,
   updatePastPaper,
   deletePastPaper,
+  createNotification,
+  deleteNotification,
+  markNotificationAsRead,
+  markAllNotificationsAsRead
 };

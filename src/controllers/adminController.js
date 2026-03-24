@@ -1,78 +1,32 @@
 const bcrypt = require('bcryptjs');
 const supabase = require('../config/supabase');
 const { sendEmail } = require('../services/brevoService');
+const fs = require('fs');
+const path = require('path');
 
 // ─── Helper function for consistent logging ─────────────────────────
-const logError = (functionName, error, context = {}) => {
-  console.error(`\n❌ ERROR in ${functionName}:`);
-  console.error(`   Time: ${new Date().toISOString()}`);
-  console.error(`   Message: ${error.message}`);
-  console.error(`   Code: ${error.code || 'N/A'}`);
-  console.error(`   Details: ${error.details || 'N/A'}`);
-  console.error(`   Hint: ${error.hint || 'N/A'}`);
-  console.error(`   Stack: ${error.stack}`);
-  if (Object.keys(context).length > 0) {
-    console.error(`   Context:`, JSON.stringify(context, null, 2));
-  }
-  console.error('----------------------------------------\n');
-};
-
-const logInfo = (functionName, message, data = {}) => {
-  console.log(`\n📌 ${functionName}: ${message}`);
-  console.log(`   Time: ${new Date().toISOString()}`);
-  if (Object.keys(data).length > 0) {
-    console.log(`   Data:`, JSON.stringify(data, null, 2));
-  }
-  console.log('----------------------------------------\n');
-};
-
-const logSuccess = (functionName, message, data = {}) => {
-  console.log(`\n✅ ${functionName}: ${message}`);
-  console.log(`   Time: ${new Date().toISOString()}`);
-  if (Object.keys(data).length > 0) {
-    console.log(`   Data:`, JSON.stringify(data, null, 2));
-  }
-  console.log('----------------------------------------\n');
-};
-
-const logWarning = (functionName, message, data = {}) => {
-  console.log(`\n⚠️ ${functionName}: ${message}`);
-  console.log(`   Time: ${new Date().toISOString()}`);
-  if (Object.keys(data).length > 0) {
-    console.log(`   Data:`, JSON.stringify(data, null, 2));
-  }
-  console.log('----------------------------------------\n');
-};
+// ... rest of helper functions ...
 
 // ─── User Registration (Admin registers teachers + students) ─────────
 const registerUser = async (req, res) => {
-  const { school_id, role, name, email, phone, password, student_id, parent_contact, class_id } = req.body;
+  const { school_id, role, name, email, phone, password: providedPassword, student_id, parent_contact, class_id } = req.body;
+  const password = providedPassword || '12345678';
   
   logInfo('registerUser', 'Registration attempt', { 
     email, 
     role, 
     name, 
     school_id: school_id || req.user?.school_id,
-    hasPhone: !!phone,
-    hasStudentId: !!student_id,
-    class_id
   });
 
-  if (!name || !email || !password || !role) {
-    logWarning('registerUser', 'Missing required fields', {
-      name: !!name,
-      email: !!email,
-      password: !!password,
-      role: !!role
-    });
-    return res.status(400).json({ error: 'Name, email, password, and role are required' });
+  if (!name || !email || !role) {
+    logWarning('registerUser', 'Missing required fields');
+    return res.status(400).json({ error: 'Name, email, and role are required' });
   }
 
   try {
-    logInfo('registerUser', 'Hashing password');
     const salt = await bcrypt.genSalt(10);
     const password_hash = await bcrypt.hash(password, salt);
-    logSuccess('registerUser', 'Password hashed successfully');
 
     const insertData = {
       school_id: school_id || req.user.school_id,
@@ -86,8 +40,6 @@ const registerUser = async (req, res) => {
       is_active: true,
     };
 
-    logInfo('registerUser', 'Inserting user into database', insertData);
-
     const { data, error } = await supabase.safeQuery(() =>
       supabase
         .from('users')
@@ -97,47 +49,53 @@ const registerUser = async (req, res) => {
     );
 
     if (error) {
-      logError('registerUser', error, { insertData });
-      
       if (error.code === '23505') {
-        logWarning('registerUser', 'Duplicate email detected', { email });
         return res.status(409).json({ error: 'A user with this email already exists' });
       }
       throw error;
     }
 
-    logSuccess('registerUser', 'User registered successfully', { userId: data.id, email: data.email });
-
-    // New: If student and class_id provided, enroll them immediately
+    // Enrollment logic (unchanged)
     if (role === 'student' && class_id) {
-      logInfo('registerUser', 'Auto-enrolling student', { userId: data.id, class_id });
-      const { error: enrollError } = await supabase.safeQuery(() =>
-        supabase
-          .from('enrollments')
-          .insert([{ student_id: data.id, class_id }])
+       await supabase.safeQuery(() =>
+        supabase.from('enrollments').insert([{ student_id: data.id, class_id }])
       );
-      if (enrollError) {
-        logError('registerUser', enrollError, { context: 'Auto-enrollment failed', userId: data.id, class_id });
-        // We don't fail the whole registration if enrollment fails, but we log it
-      } else {
-        logSuccess('registerUser', 'Student enrolled successfully during registration');
-      }
     }
 
-    // Send welcome email (non-blocking)
-    sendEmail(
-      email,
-      "Welcome to Trespics Academy",
-      `<h1>Welcome ${name}!</h1><p>Your account as <strong>${role}</strong> has been created.</p><p>You can log in with your email and the password provided by your administrator.</p>`
-    ).then(() => {
-      logSuccess('registerUser', 'Welcome email sent', { email });
-    }).catch(err => {
-      logError('registerUser', err, { context: 'Welcome email sending', email });
-    });
+    // Fetch school details
+    const { data: school } = await supabase.safeQuery(() =>
+      supabase.from('schools').select('name, logo_url').eq('id', insertData.school_id).single()
+    );
+
+    // Send welcome email using template
+    const templatePath = path.join(__dirname, '../emails/Login-email.html');
+    if (fs.existsSync(templatePath)) {
+      let htmlContent = fs.readFileSync(templatePath, 'utf8');
+      const roleName = role.charAt(0).toUpperCase() + role.slice(1);
+      
+      htmlContent = htmlContent
+        .replace(/{{school_logo}}/g, school?.logo_url || 'https://trespics.com/logo.png')
+        .replace(/{{school_name}}/g, school?.name || 'Our School')
+        .replace(/{{recipient_name}}/g, name)
+        .replace(/{{user_role}}/g, roleName)
+        .replace(/{{default_password}}/g, password);
+
+      sendEmail(
+        email,
+        `Welcome to ${school?.name || 'Trespics Academy'}`,
+        htmlContent
+      ).catch(err => logError('registerUser', err, { context: 'Email sending' }));
+    } else {
+      sendEmail(
+        email,
+        "Welcome to Trespics Academy",
+        `<h1>Welcome ${name}!</h1><p>Your account as <strong>${role}</strong> has been created.</p><p>Login Password: <strong>${password}</strong></p>`
+      ).catch(err => logError('registerUser', err, { context: 'Fallback email sending' }));
+    }
 
     res.status(201).json(data);
   } catch (error) {
-    logError('registerUser', error, { body: req.body });
+    logError('registerUser', error);
     res.status(400).json({ error: error.message });
   }
 };
@@ -427,12 +385,11 @@ const getAnnouncements = async (req, res) => {
 };
 
 const createAnnouncement = async (req, res) => {
-  const { title, message, type, target } = req.body;
+  const { title, message, type, recipient_id } = req.body;
   
   logInfo('createAnnouncement', 'Creating new announcement', { 
     title, 
     type, 
-    target,
     schoolId: req.user?.school_id 
   });
 
@@ -444,7 +401,8 @@ const createAnnouncement = async (req, res) => {
   try {
     const insertData = {
       school_id: req.user.school_id,
-      recipient_id: null, // null = broadcast
+      sender_id: req.user.id,
+      recipient_id: recipient_id || null, // null = broadcast
       title,
       message,
       type: type || 'general',

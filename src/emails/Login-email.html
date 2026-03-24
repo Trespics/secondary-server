@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>TresPics School – Teacher Portal Registration</title>
+    <style>
+        /* Reset & base styles for email clients */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #eef2f5;
+            font-family: 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            line-height: 1.5;
+        }
+
+        /* Main container */
+        .email-wrapper {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.05);
+        }
+
+        /* Header with school branding */
+        .email-header {
+            background: linear-gradient(135deg, #1a3c34 0%, #2a5a4a 100%);
+            padding: 32px 24px;
+            text-align: center;
+        }
+
+        .school-name {
+            font-size: 28px;
+            font-weight: 700;
+            color: #ffffff;
+            letter-spacing: -0.3px;
+            margin-bottom: 6px;
+        }
+
+        .tagline {
+            font-size: 14px;
+            color: #cbe5df;
+            font-weight: 400;
+        }
+
+        /* main content */
+        .email-content {
+            padding: 36px 32px 28px 32px;
+            background: #ffffff;
+        }
+
+        .greeting {
+            font-size: 22px;
+            font-weight: 600;
+            color: #1e2f2a;
+            margin-bottom: 20px;
+            border-left: 5px solid #2a7f6e;
+            padding-left: 18px;
+        }
+
+        .message-text {
+            color: #2d3e3a;
+            font-size: 16px;
+            margin-bottom: 24px;
+        }
+
+        .highlight-box {
+            background-color: #f8fbfa;
+            border-left: 4px solid #2a7f6e;
+            padding: 16px 20px;
+            margin: 24px 0;
+            border-radius: 12px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+        }
+
+        .password-row {
+            display: flex;
+            align-items: baseline;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin: 12px 0 0 0;
+            font-size: 16px;
+        }
+
+        .password-label {
+            font-weight: 600;
+            color: #1a3c34;
+        }
+
+        .default-password {
+            background: #eef2f1;
+            padding: 6px 14px;
+            border-radius: 40px;
+            font-family: 'Courier New', monospace;
+            font-weight: 700;
+            font-size: 18px;
+            letter-spacing: 1px;
+            color: #1e5a4c;
+            display: inline-block;
+            border: 1px solid #d0dfda;
+        }
+
+        .instruction-list {
+            margin: 20px 0 10px 0;
+            padding-left: 20px;
+        }
+
+        .instruction-list li {
+            margin-bottom: 12px;
+            font-size: 15px;
+            color: #2c3e3a;
+        }
+
+        .instruction-list li strong {
+            color: #1f5e50;
+        }
+
+        .profile-highlight {
+            background-color: #eef4f2;
+            padding: 12px 16px;
+            border-radius: 14px;
+            font-weight: 500;
+            margin: 20px 0 12px 0;
+            display: inline-block;
+            font-size: 15px;
+            color: #1f5a4b;
+            width: auto;
+        }
+
+        .support-note {
+            background: #f9f5eb;
+            padding: 18px 20px;
+            border-radius: 18px;
+            margin: 28px 0 16px 0;
+            border: 1px solid #f0e5d2;
+            font-size: 15px;
+            color: #785e2e;
+        }
+
+        .support-note a {
+            color: #2a7f6e;
+            text-decoration: underline;
+            font-weight: 500;
+        }
+
+        .btn-help {
+            display: inline-block;
+            background-color: #2a7f6e;
+            color: #ffffff;
+            text-decoration: none;
+            padding: 10px 24px;
+            border-radius: 40px;
+            font-weight: 600;
+            font-size: 14px;
+            margin-top: 8px;
+            transition: background 0.2s ease;
+        }
+
+        .btn-help:hover {
+            background-color: #1f604f;
+        }
+
+        .signature {
+            margin-top: 32px;
+            padding-top: 20px;
+            border-top: 1px solid #e2e9e6;
+            font-size: 15px;
+            color: #3a5a52;
+        }
+
+        .signature strong {
+            color: #1e4f42;
+        }
+
+        /* footer */
+        .email-footer {
+            background-color: #f6f9f8;
+            padding: 20px 32px;
+            text-align: center;
+            font-size: 12px;
+            color: #6b8b7e;
+            border-top: 1px solid #e0ece8;
+        }
+
+        .footer-links {
+            margin: 8px 0 0;
+            font-size: 11px;
+        }
+
+        @media only screen and (max-width: 550px) {
+            .email-content {
+                padding: 24px 20px;
+            }
+            .default-password {
+                font-size: 16px;
+                padding: 4px 12px;
+            }
+            .greeting {
+                font-size: 20px;
+            }
+        }
+    </style>
+</head>
+<body style="margin:0; padding:20px 12px; background-color:#eef2f5; font-family:'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif;">
+    <!-- main email container for better outlook/gmail compatibility -->
+    <div style="max-width:600px; margin:0 auto;">
+        <div class="email-wrapper" style="background-color:#ffffff; border-radius:20px; overflow:hidden; box-shadow:0 8px 20px rgba(0,0,0,0.05);">
+            
+            <!-- header with school identity -->
+            <div class="email-header" style="background: linear-gradient(135deg, #1a3c34 0%, #2a5a4a 100%); padding:32px 24px; text-align:center;">
+                <img src="{{school_logo}}" alt="{{school_name}} Logo" style="max-height: 80px; margin-bottom: 15px; border-radius: 8px;">
+                <div class="school-name" style="font-size:28px; font-weight:700; color:#ffffff; letter-spacing:-0.3px; margin-bottom:6px;">{{school_name}}</div>
+                <div class="tagline" style="font-size:14px; color:#cbe5df; font-weight:400;">empowering educators • inspiring creativity</div>
+            </div>
+            
+            <!-- main body content -->
+            <div class="email-content" style="padding:36px 32px 28px 32px; background:#ffffff;">
+                <div class="greeting" style="font-size:22px; font-weight:600; color:#1e2f2a; margin-bottom:20px; border-left:5px solid #2a7f6e; padding-left:18px;">
+                    Dear {{recipient_name}},
+                </div>
+                
+                <div class="message-text" style="color:#2d3e3a; font-size:16px; margin-bottom:24px;">
+                    We are pleased to inform you that you have been successfully registered on the <strong style="color:#1a5e4f;">{{school_name}} {{user_role}} Portal</strong>. 
+                    Your account is now active and ready for you to access your dashboard and manage school activities.
+                </div>
+                
+                <!-- password block with clear visibility -->
+                <div class="highlight-box" style="background-color:#f8fbfa; border-left:4px solid #2a7f6e; padding:16px 20px; margin:24px 0; border-radius:12px;">
+                    <div style="font-weight:600; margin-bottom:6px; color:#1a3c34;">🔐 Your temporary login credentials</div>
+                    <div class="password-row" style="display:flex; align-items:baseline; flex-wrap:wrap; gap:8px; margin:12px 0 0 0; font-size:16px;">
+                        <span class="password-label" style="font-weight:600; color:#1a3c34;">Default login password:</span>
+                        <span class="default-password" style="background:#eef2f1; padding:6px 14px; border-radius:40px; font-family:'Courier New', monospace; font-weight:700; font-size:18px; letter-spacing:1px; color:#1e5a4c; display:inline-block; border:1px solid #d0dfda;">{{default_password}}</span>
+                    </div>
+                </div>
+                
+                <!-- mandatory password change section -->
+                <div style="margin: 10px 0 6px 0;">
+                    <div style="display:flex; align-items:center; gap:8px; margin-bottom:12px;">
+                        <span style="font-size:20px;">⚠️</span>
+                        <span style="font-weight:600; color:#1f4b3f;">First login — action required</span>
+                    </div>
+                    <p style="color:#2d3e3a; font-size:15px; margin-bottom:12px;">
+                        Once you log in for the first time, you are <strong>required to change your password</strong>. 
+                        Please navigate to the <strong style="background:#eef2f1; padding:2px 8px; border-radius:20px;">Profile Section</strong> and update it under the 
+                        <strong style="background:#eef2f1; padding:2px 8px; border-radius:20px;">Security Settings</strong> for your account's safety.
+                    </p>
+                </div>
+                
+                <!-- bullet-proof steps -->
+                <ul class="instruction-list" style="margin:20px 0 10px 0; padding-left:20px;">
+                    <li style="margin-bottom:12px; font-size:15px; color:#2c3e3a;">✅ <strong>Step 1:</strong> Go to the {{user_role}} Portal login page.</li>
+                    <li style="margin-bottom:12px; font-size:15px; color:#2c3e3a;">✅ <strong>Step 2:</strong> Use your registered email and the temporary password: <strong style="background:#f0f3f2; padding:2px 8px; border-radius:16px; font-family:monospace;">{{default_password}}</strong></li>
+                    <li style="margin-bottom:12px; font-size:15px; color:#2c3e3a;">✅ <strong>Step 3:</strong> Immediately access <strong>Profile → Security Settings</strong> and create a strong new password.</li>
+                </ul>
+                
+                <!-- extra highlight: profile location -->
+                <div class="profile-highlight" style="background-color:#eef4f2; padding:12px 16px; border-radius:14px; font-weight:500; margin:20px 0 12px 0; display:inline-block; font-size:15px; color:#1f5a4b;">
+                    📍 Where to change password: <strong>Profile Section</strong> → <strong>Security Settings</strong>
+                </div>
+                
+                <!-- support / assistance block -->
+                <div class="support-note" style="background:#f9f5eb; padding:18px 20px; border-radius:18px; margin:28px 0 16px 0; border:1px solid #f0e5d2; font-size:15px; color:#785e2e;">
+                    <span style="font-size:18px;">🛟</span> <strong style="color:#5d451d;">Need help?</strong><br>
+                    If you experience any difficulties accessing your account, feel free to reach out for assistance. 
+                    Our IT support team is available Monday–Friday, 8:00 AM – 4:00 PM.<br>
+                </div>
+                
+                <!-- signature block -->
+                <div class="signature" style="margin-top:32px; padding-top:20px; border-top:1px solid #e2e9e6; font-size:15px; color:#3a5a52;">
+                    <strong style="color:#1e4f42;">Best regards,</strong><br>
+                    {{school_name}} Administration<br>
+                    <span style="font-size:13px; color:#5e7e72;">Digital Campus Team</span>
+                </div>
+            </div>
+            
+            <!-- footer (legal / unsubscribe / info) -->
+            <div class="email-footer" style="background-color:#f6f9f8; padding:20px 32px; text-align:center; font-size:12px; color:#6b8b7e; border-top:1px solid #e0ece8;">
+                <div>© 2026 TresPics School – Teacher Portal. All rights reserved.</div>
+                <div class="footer-links" style="margin:8px 0 0; font-size:11px;">
+                    This is an automated message from the TresPics registration system. 
+                    If you did not expect this email, please contact your school coordinator.
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

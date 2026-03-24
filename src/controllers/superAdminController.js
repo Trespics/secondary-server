@@ -100,10 +100,11 @@ const deleteSchool = async (req, res) => {
 
 // ─── School Admin Registration ────────────────────────────────────────
 const registerSchoolAdmin = async (req, res) => {
-  const { school_id, name, email, phone, password } = req.body;
+  const { school_id, name, email, phone, password: providedPassword } = req.body;
+  const password = providedPassword || '12345678';
 
-  if (!school_id || !name || !email || !password) {
-    return res.status(400).json({ error: 'School ID, name, email, and password are required' });
+  if (!school_id || !name || !email) {
+    return res.status(400).json({ error: 'School ID, name, and email are required' });
   }
 
   try {
@@ -133,12 +134,36 @@ const registerSchoolAdmin = async (req, res) => {
       throw error;
     }
 
-    // Send welcome email
-    sendEmail(
-      email,
-      "Welcome to CBC eLearning System",
-      `<h1>Welcome ${name}!</h1><p>You have been registered as an administrator for your school.</p><p>You can log in with your email and the password provided by the system administrator.</p>`
-    ).catch(err => console.error('Welcome email failed:', err));
+    // Fetch school details for the email
+    const { data: school } = await supabase.safeQuery(() =>
+      supabase.from('schools').select('name, logo_url').eq('id', school_id).single()
+    );
+
+    // Read and prepare email template
+    const templatePath = path.join(__dirname, '../emails/Login-email.html');
+    if (fs.existsSync(templatePath)) {
+      let htmlContent = fs.readFileSync(templatePath, 'utf8');
+      
+      htmlContent = htmlContent
+        .replace(/{{school_logo}}/g, school?.logo_url || 'https://trespics.com/logo.png')
+        .replace(/{{school_name}}/g, school?.name || 'Our School')
+        .replace(/{{recipient_name}}/g, name)
+        .replace(/{{user_role}}/g, 'Admin')
+        .replace(/{{default_password}}/g, password);
+
+      sendEmail(
+        email,
+        `Welcome to ${school?.name || 'CBC eLearning System'}`,
+        htmlContent
+      ).catch(err => console.error('Welcome email failed:', err));
+    } else {
+      // Fallback to simple email if template missing
+      sendEmail(
+        email,
+        "Welcome to CBC eLearning System",
+        `<h1>Welcome ${name}!</h1><p>You have been registered as an administrator for ${school?.name || 'your school'}.</p><p>Login Password: <strong>${password}</strong></p>`
+      ).catch(err => console.error('Fallback email failed:', err));
+    }
 
     res.status(201).json(data);
   } catch (error) {

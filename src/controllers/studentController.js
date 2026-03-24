@@ -3,7 +3,7 @@ const supabase = require('../config/supabase');
 // ─── Get Profile ─────────────────────────────────────────────────────
 const getProfile = async (req, res) => {
   try {
-    const { data, error } = await supabase.safeQuery(() =>
+    const { data: user, error: userError } = await supabase.safeQuery(() =>
       supabase
         .from('users')
         .select('*, student_details(*)')
@@ -11,8 +11,23 @@ const getProfile = async (req, res) => {
         .single()
     );
 
-    if (error) throw error;
-    const { password_hash, ...safeUser } = data;
+    if (userError) throw userError;
+
+    // Get student's class
+    const { data: enrollment, error: enrollError } = await supabase.safeQuery(() =>
+      supabase
+        .from('enrollments')
+        .select('classes(name)')
+        .eq('student_id', req.user.id)
+        .single()
+    );
+
+    const profileData = {
+      ...user,
+      class_name: enrollment?.classes?.name || 'Not Enrolled'
+    };
+
+    const { password_hash, ...safeUser } = profileData;
     res.json(safeUser);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -368,14 +383,21 @@ const getNotifications = async (req, res) => {
     const { data, error } = await supabase.safeQuery(() =>
       supabase
         .from('notifications')
-        .select('*')
+        .select('*, sender:users!sender_id(name)')
         .or(`recipient_id.eq.${req.user.id},recipient_id.is.null`)
         .order('created_at', { ascending: false })
         .limit(50)
     );
 
     if (error) throw error;
-    res.json(data || []);
+    
+    // Flatten the result to include sender_name directly
+    const processed = (data || []).map(n => ({
+      ...n,
+      sender_name: n.sender?.name || 'System'
+    }));
+
+    res.json(processed);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

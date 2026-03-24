@@ -47,5 +47,9 @@ router.put('/profile', teacherController.updateProfile);
 
 // Notifications
 router.get('/notifications', teacherController.getNotifications);
+router.post('/notifications', teacherController.createNotification);
+router.patch('/notifications/mark-all-read', teacherController.markAllNotificationsAsRead);
+router.patch('/notifications/:id/read', teacherController.markNotificationAsRead);
+router.delete('/notifications/:id', teacherController.deleteNotification);
 
 module.exports = router;
