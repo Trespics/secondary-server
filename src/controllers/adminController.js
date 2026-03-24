@@ -49,7 +49,7 @@ const registerUser = async (req, res) => {
       email: email.toLowerCase().trim(),
       phone,
       password_hash,
-      student_id,
+      student_id: (role === 'student' && student_id && student_id.trim() !== '') ? student_id : null,
       parent_contact,
       is_active: true,
     };
@@ -64,7 +64,13 @@ const registerUser = async (req, res) => {
 
     if (error) {
       if (error.code === '23505') {
-        return res.status(409).json({ error: 'A user with this email already exists' });
+        const detail = error.detail || '';
+        if (detail.includes('email')) {
+          return res.status(409).json({ error: 'A user with this email already exists' });
+        } else if (detail.includes('student_id')) {
+          return res.status(409).json({ error: 'A student with this admission number already exists' });
+        }
+        return res.status(409).json({ error: 'A user with these details already exists' });
       }
       throw error;
     }
@@ -94,11 +100,13 @@ const registerUser = async (req, res) => {
         .replace(/{{user_role}}/g, roleName)
         .replace(/{{default_password}}/g, password);
 
+      logInfo('registerUser', `Prepared email for ${name} (${email}). Sending...`);
       sendEmail(
         email,
         `Welcome to ${school?.name || 'Trespics Academy'}`,
         htmlContent
-      ).catch(err => logError('registerUser', err, { context: 'Email sending' }));
+      ).then(data => logSuccess('registerUser', 'Registration email sent successfully', { messageId: data.messageId }))
+       .catch(err => logError('registerUser', err, { context: 'Email sending failed' }));
     } else {
       sendEmail(
         email,

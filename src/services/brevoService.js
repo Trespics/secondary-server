@@ -4,6 +4,9 @@ require('dotenv').config();
 const defaultClient = SibApiV3Sdk.ApiClient.instance;
 const apiKey = defaultClient.authentications['api-key'];
 apiKey.apiKey = process.env.BREVO_API_KEY;
+if (!apiKey.apiKey) {
+  console.error('❌ BREVO_API_KEY is missing in environment variables');
+}
 
 const apiInstance = new SibApiV3Sdk.TransactionalEmailsApi();
 const smsInstance = new SibApiV3Sdk.TransactionalSMSApi();
@@ -20,16 +23,21 @@ const sendEmail = async (to, subject, htmlContent, sender = null) => {
   sendSmtpEmail.subject = subject;
   sendSmtpEmail.htmlContent = htmlContent;
   const defaultSenderEmail = process.env.EMAIL_FROM || "waruijohnkar@gmail.com";
-  const defaultSenderName = process.env.EMAIL_FROM_NAME || "Trespics Academy";
+  const defaultSenderName = process.env.BREVO_SENDER_NAME || process.env.EMAIL_FROM_NAME || "Trespics Academy";
+  
+  console.log(`📧 Attempting to send email to: ${to}`);
+  console.log(`   Subject: ${subject}`);
+  console.log(`   Sender: ${defaultSenderName} <${defaultSenderEmail}>`);
+
   sendSmtpEmail.sender = sender || { name: defaultSenderName, email: defaultSenderEmail };
   sendSmtpEmail.to = [{ email: to }];
 
   try {
     const data = await apiInstance.sendTransacEmail(sendSmtpEmail);
-    console.log('Email sent successfully:', data.messageId);
+    console.log('✅ Email sent successfully via Brevo. Message ID:', data.messageId);
     return data;
   } catch (error) {
-    console.error('Error sending email via Brevo:', error);
+    console.error('❌ Error sending email via Brevo:', error.response ? error.response.body : error.message);
     throw error;
   }
 };
