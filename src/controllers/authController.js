@@ -32,7 +32,7 @@ const login = async (req, res) => {
       supabase
         .from('users')
         .select('*, schools(*)')
-        .eq('email', email.toLowerCase().trim())
+        .or(`email.eq.${email.toLowerCase().trim()},student_id.eq.${email.trim()}`)
         .single()
     );
 
@@ -42,6 +42,7 @@ const login = async (req, res) => {
       if (error.code !== 'PGRST116') {
         return res.status(500).json({ 
           error: 'Connection error. Please try again in a moment.',
+          status: 'error',
           details: error.message 
         });
       }
@@ -165,7 +166,7 @@ const forgotPassword = async (req, res) => {
 
     await sendEmail(
       user.email,
-      'Reset Your Trespics School Password',
+      'Reset Your Florante School Password',
       emailHtml
     );
 

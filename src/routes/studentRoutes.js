@@ -27,6 +27,7 @@ router.post('/submissions', studentController.submitAssignment);
 // Grades & Results
 router.get('/grades', studentController.getMyGrades);
 router.get('/results', studentController.getResults);
+router.get('/report-card', studentController.getReportCard);
 
 // Notifications
 router.get('/notifications', studentController.getNotifications);

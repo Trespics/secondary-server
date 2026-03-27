@@ -451,6 +451,65 @@ const getResults = async (req, res) => {
 };
 
 // ─── Past Papers ─────────────────────────────────────────────────────
+const getReportCard = async (req, res) => {
+  const student_id = req.user.id;
+  try {
+    // Get student's enrollment
+    const { data: enrollment } = await supabase.safeQuery(() =>
+      supabase
+        .from('enrollments')
+        .select('class_id, classes(name)')
+        .eq('student_id', student_id)
+        .single()
+    );
+
+    if (!enrollment) return res.json({ class_name: 'Not Enrolled', subjects: [] });
+
+    // Fetch all CATs for this class
+    const { data: cats } = await supabase.safeQuery(() =>
+      supabase
+        .from('cats')
+        .select('*, subjects(name, code)')
+        .eq('class_id', enrollment.class_id)
+    );
+
+    // Fetch student's submissions for these CATs
+    const { data: submissions } = await supabase.safeQuery(() =>
+      supabase
+        .from('submissions')
+        .select('*')
+        .eq('student_id', student_id)
+        .in('cat_id', (cats || []).map(c => c.id))
+    );
+
+    // Group scores by subject and exam type
+    const subjectMap = {};
+    (cats || []).forEach(cat => {
+      const subjectName = cat.subjects?.name;
+      if (!subjectMap[subjectName]) {
+        subjectMap[subjectName] = {
+          subject_name: subjectName,
+          subject_code: cat.subjects?.code,
+          grades: { 'CAT 1': null, 'CAT 2': null, 'End Term': null }
+        };
+      }
+      
+      const sub = (submissions || []).find(s => s.cat_id === cat.id);
+      if (sub && sub.marks_obtained !== null) {
+        const score = (parseFloat(sub.marks_obtained) / parseFloat(sub.max_score || 1) * 100).toFixed(1);
+        subjectMap[subjectName].grades[cat.exam_type] = score;
+      }
+    });
+
+    res.json({
+      class_name: enrollment.classes?.name,
+      subjects: Object.values(subjectMap)
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
 const getPastPapers = async (req, res) => {
   try {
     const { data: enrollments } = await supabase.safeQuery(() =>
@@ -496,4 +555,5 @@ module.exports = {
   reportMaterial,
   getPastPapers,
   submitCAT,
+  getReportCard
 };

@@ -40,6 +40,7 @@ router.post('/cats', teacherController.createCAT);
 // Submissions & Grading
 router.get('/submissions', teacherController.getSubmissions);
 router.patch('/submissions/:submission_id/grade', teacherController.gradeSubmission);
+router.get('/performance', teacherController.getPerformanceData);
 
 // Profile
 router.get('/profile', teacherController.getProfile);

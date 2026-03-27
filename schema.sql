@@ -268,6 +268,8 @@ CREATE TABLE cats (
     subject_id UUID NOT NULL REFERENCES subjects(id) ON DELETE CASCADE,
     lesson_id UUID REFERENCES lessons(id) ON DELETE SET NULL,
     title TEXT NOT NULL,
+    exam_type TEXT DEFAULT 'CAT 1' CHECK (exam_type IN ('CAT 1', 'CAT 2', 'End Term')),
+    term TEXT DEFAULT 'Term 1' CHECK (term IN ('Term 1', 'Term 2', 'Term 3')),
     time_limit_minutes INTEGER DEFAULT 0,
     start_time TIMESTAMP WITH TIME ZONE,
     end_time TIMESTAMP WITH TIME ZONE,

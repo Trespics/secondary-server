@@ -23,7 +23,7 @@ const sendEmail = async (to, subject, htmlContent, sender = null) => {
   sendSmtpEmail.subject = subject;
   sendSmtpEmail.htmlContent = htmlContent;
   const defaultSenderEmail = process.env.EMAIL_FROM || "waruijohnkar@gmail.com";
-  const defaultSenderName = process.env.BREVO_SENDER_NAME || process.env.EMAIL_FROM_NAME || "Trespics Academy";
+  const defaultSenderName = process.env.BREVO_SENDER_NAME || process.env.EMAIL_FROM_NAME || "Florante Academy";
   
   console.log(`📧 Attempting to send email to: ${to}`);
   console.log(`   Subject: ${subject}`);
@@ -49,7 +49,7 @@ const sendEmail = async (to, subject, htmlContent, sender = null) => {
  */
 const sendSMS = async (to, content) => {
   const sendTransacSms = new SibApiV3Sdk.SendTransacSms();
-  sendTransacSms.sender = "Trespics";
+  sendTransacSms.sender = "Florante";
   sendTransacSms.recipient = to;
   sendTransacSms.content = content;
 

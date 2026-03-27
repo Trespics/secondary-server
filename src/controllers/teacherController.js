@@ -427,7 +427,7 @@ const getMyAssignments = async (req, res) => {
 
 // ─── Create CAT ──────────────────────────────────────────────────────
 const createCAT = async (req, res) => {
-  const { school_id, class_id, subject_id, lesson_id, title, time_limit_minutes, start_time, end_time, questions } = req.body;
+  const { school_id, class_id, subject_id, lesson_id, title, exam_type, term, time_limit_minutes, start_time, end_time, questions } = req.body;
   const teacher_id = req.user.id;
 
   try {
@@ -441,6 +441,8 @@ const createCAT = async (req, res) => {
           subject_id,
           lesson_id,
           title,
+          exam_type: exam_type || 'CAT 1',
+          term: term || 'Term 1',
           time_limit_minutes,
           start_time,
           end_time,
@@ -704,6 +706,145 @@ const markNotificationAsRead = async (req, res) => {
   }
 };
 
+const getPerformanceData = async (req, res) => {
+  const teacher_id = req.user.id;
+  try {
+    const { data: classSubjects } = await supabase.safeQuery(() =>
+      supabase
+        .from('class_subjects')
+        .select('class_id, subject_id, classes(name), subjects(name)')
+        .eq('teacher_id', teacher_id)
+    );
+
+    const classIds = [...new Set((classSubjects || []).map(cs => cs.class_id))];
+    if (classIds.length === 0) return res.json({ students: [], subjects: [], classes: [] });
+
+    // Fetch all CATs for these classes
+    const { data: cats } = await supabase.safeQuery(() =>
+      supabase
+        .from('cats')
+        .select('*, subjects(name), classes(name)')
+        .in('class_id', classIds)
+    );
+
+    const catIds = (cats || []).map(c => c.id);
+    
+    // Fetch submissions for these CATs
+    const { data: submissions } = await supabase.safeQuery(() =>
+      supabase
+        .from('submissions')
+        .select('*, users(name, student_id)')
+        .in('cat_id', catIds)
+    );
+
+    // Fetch enrollments for these classes
+    const { data: enrollments } = await supabase.safeQuery(() =>
+      supabase
+        .from('enrollments')
+        .select('*, users(name, student_id)')
+        .in('class_id', classIds)
+    );
+
+    // Processing logic for Student Grades, Subject Performance, Class Performance
+    // Helper to calculate CBC level
+    const getCBCLevel = (score) => {
+      if (score >= 80) return 'EE';
+      if (score >= 60) return 'ME';
+      if (score >= 40) return 'AE';
+      return 'BE';
+    };
+
+    // 1. Student Grades
+    const studentGrades = (enrollments || []).map(e => {
+        const studentSubmissions = (submissions || []).filter(s => s.student_id === e.student_id);
+        const examGrades = {};
+        ['CAT 1', 'CAT 2', 'End Term'].forEach(type => {
+            const typeSubmissions = studentSubmissions.filter(s => {
+                const cat = cats.find(c => c.id === s.cat_id);
+                return cat?.exam_type === type;
+            });
+            if (typeSubmissions.length > 0) {
+                const total = typeSubmissions.reduce((acc, curr) => acc + (parseFloat(curr.marks_obtained) / parseFloat(curr.max_score || 1) * 100), 0);
+                examGrades[type] = (total / typeSubmissions.length).toFixed(1);
+            } else {
+                examGrades[type] = null;
+            }
+        });
+
+        return {
+            student_id: e.student_id,
+            name: e.users?.name,
+            admission_no: e.users?.student_id,
+            class_name: e.classes?.name,
+            grades: examGrades
+        };
+    });
+
+    // 2. Subject Performance
+    const subjectPerformance = (classSubjects || []).map(cs => {
+        const subjectCats = (cats || []).filter(c => c.subject_id === cs.subject_id && c.class_id === cs.class_id);
+        const performance = {};
+        ['CAT 1', 'CAT 2', 'End Term'].forEach(type => {
+            const typeCats = subjectCats.filter(c => c.exam_type === type);
+            const typeCatIds = typeCats.map(c => c.id);
+            const typeSubmissions = (submissions || []).filter(s => typeCatIds.includes(s.cat_id));
+            
+            if (typeSubmissions.length > 0) {
+                const total = typeSubmissions.reduce((acc, curr) => acc + (parseFloat(curr.marks_obtained) / parseFloat(curr.max_score || 1) * 100), 0);
+                const average = total / typeSubmissions.length;
+                performance[type] = {
+                    average: average.toFixed(1),
+                    level: getCBCLevel(average)
+                };
+            } else {
+                performance[type] = null;
+            }
+        });
+
+        return {
+            subject_id: cs.subject_id,
+            subject_name: cs.subjects?.name,
+            class_name: cs.classes?.name,
+            performance
+        };
+    });
+
+    // 3. Class Performance (Aggregated from subjects)
+    const classPerformance = classIds.map(cid => {
+        const cls = classSubjects.find(cs => cs.class_id === cid);
+        const clsSubjects = subjectPerformance.filter(sp => sp.class_name === cls?.classes?.name);
+        
+        const performance = {};
+        ['CAT 1', 'CAT 2', 'End Term'].forEach(type => {
+            const typeScores = clsSubjects.map(sp => sp.performance[type]?.average).filter(s => s !== null && s !== undefined).map(s => parseFloat(s));
+            if (typeScores.length > 0) {
+                const average = typeScores.reduce((acc, curr) => acc + curr, 0) / typeScores.length;
+                performance[type] = {
+                    average: average.toFixed(1),
+                    level: getCBCLevel(average)
+                };
+            } else {
+                performance[type] = null;
+            }
+        });
+
+        return {
+            class_id: cid,
+            class_name: cls?.classes?.name,
+            performance
+        };
+    });
+
+    res.json({
+      students: studentGrades,
+      subjects: subjectPerformance,
+      classes: classPerformance
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
 const markAllNotificationsAsRead = async (req, res) => {
   const user_id = req.user.id;
 
@@ -750,5 +891,6 @@ module.exports = {
   createNotification,
   deleteNotification,
   markNotificationAsRead,
-  markAllNotificationsAsRead
+  markAllNotificationsAsRead,
+  getPerformanceData
 };

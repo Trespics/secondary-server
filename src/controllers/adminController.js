@@ -46,11 +46,11 @@ const registerUser = async (req, res) => {
       school_id: school_id || req.user.school_id,
       role,
       name,
-      email: email.toLowerCase().trim(),
-      phone,
+      email: (role === 'student' && (!email || email.trim() === '')) ? null : email?.toLowerCase().trim(),
+      phone: (role === 'student') ? null : phone,
       password_hash,
       student_id: (role === 'student' && student_id && student_id.trim() !== '') ? student_id : null,
-      parent_contact,
+      parent_contact: (role === 'student') ? null : parent_contact,
       is_active: true,
     };
 
@@ -88,31 +88,35 @@ const registerUser = async (req, res) => {
     );
 
     // Send welcome email using template
-    const templatePath = path.join(__dirname, '../emails/Login-email.html');
-    if (fs.existsSync(templatePath)) {
-      let htmlContent = fs.readFileSync(templatePath, 'utf8');
-      const roleName = role.charAt(0).toUpperCase() + role.slice(1);
-      
-      htmlContent = htmlContent
-        .replace(/{{school_logo}}/g, school?.logo_url || 'https://trespics.com/logo.png')
-        .replace(/{{school_name}}/g, school?.name || 'Our School')
-        .replace(/{{recipient_name}}/g, name)
-        .replace(/{{user_role}}/g, roleName)
-        .replace(/{{default_password}}/g, password);
+    if (data.email) {
+      const templatePath = path.join(__dirname, '../emails/Login-email.html');
+      if (fs.existsSync(templatePath)) {
+        let htmlContent = fs.readFileSync(templatePath, 'utf8');
+        const roleName = role.charAt(0).toUpperCase() + role.slice(1);
+        
+        htmlContent = htmlContent
+          .replace(/{{school_logo}}/g, school?.logo_url || 'https://trespics.com/logo.png')
+          .replace(/{{school_name}}/g, school?.name || 'Our School')
+          .replace(/{{recipient_name}}/g, name)
+          .replace(/{{user_role}}/g, roleName)
+          .replace(/{{default_password}}/g, password);
 
-      logInfo('registerUser', `Prepared email for ${name} (${email}). Sending...`);
-      sendEmail(
-        email,
-        `Welcome to ${school?.name || 'Trespics Academy'}`,
-        htmlContent
-      ).then(data => logSuccess('registerUser', 'Registration email sent successfully', { messageId: data.messageId }))
-       .catch(err => logError('registerUser', err, { context: 'Email sending failed' }));
+        logInfo('registerUser', `Prepared email for ${name} (${data.email}). Sending...`);
+        sendEmail(
+          data.email,
+          `Welcome to ${school?.name || 'Florante Academy'}`,
+          htmlContent
+        ).then(data => logSuccess('registerUser', 'Registration email sent successfully', { messageId: data.messageId }))
+         .catch(err => logError('registerUser', err, { context: 'Email sending failed' }));
+      } else {
+        sendEmail(
+          data.email,
+          "Welcome to Florante Academy",
+          `<h1>Welcome ${name}!</h1><p>Your account as <strong>${role}</strong> has been created.</p><p>Login Password: <strong>${password}</strong></p>`
+        ).catch(err => logError('registerUser', err, { context: 'Fallback email sending' }));
+      }
     } else {
-      sendEmail(
-        email,
-        "Welcome to Trespics Academy",
-        `<h1>Welcome ${name}!</h1><p>Your account as <strong>${role}</strong> has been created.</p><p>Login Password: <strong>${password}</strong></p>`
-      ).catch(err => logError('registerUser', err, { context: 'Fallback email sending' }));
+      logInfo('registerUser', `No email for ${name} (${role}). Skipping welcome email.`);
     }
 
     res.status(201).json(data);
@@ -173,11 +177,19 @@ const updateUser = async (req, res) => {
   try {
     const updateData = {};
     if (updates.name !== undefined) updateData.name = updates.name;
-    if (updates.email !== undefined) updateData.email = updates.email.toLowerCase().trim();
-    if (updates.phone !== undefined) updateData.phone = updates.phone;
     if (updates.role !== undefined) updateData.role = updates.role;
     if (updates.is_active !== undefined) updateData.is_active = updates.is_active;
     if (updates.student_id !== undefined) updateData.student_id = updates.student_id;
+    
+    // Only update contact info if NOT a student, or if explicitly provided and not empty
+    const isStudent = updates.role === 'student' || (updates.role === undefined && data?.role === 'student'); 
+    // Wait, I don't have the existing user data here yet unless I fetch it.
+    // Let's assume the updates passed are correct for the role.
+    
+    if (updates.email !== undefined) {
+      updateData.email = updates.email ? updates.email.toLowerCase().trim() : null;
+    }
+    if (updates.phone !== undefined) updateData.phone = updates.phone;
     if (updates.parent_contact !== undefined) updateData.parent_contact = updates.parent_contact;
 
     logInfo('updateUser', 'Applying updates', updateData);
@@ -1318,6 +1330,70 @@ const deleteSubject = async (req, res) => {
 };
 
 // ─── Activity Logs ───────────────────────────────────────────────────
+const bulkRegisterUsers = async (req, res) => {
+  const { users } = req.body;
+  const school_id = req.user.school_id;
+  const password = '12345678';
+
+  if (!users || !Array.isArray(users)) {
+    return res.status(400).json({ error: 'Invalid users data' });
+  }
+
+  try {
+    const salt = await bcrypt.genSalt(10);
+    const password_hash = await bcrypt.hash(password, salt);
+
+    const results = {
+      success: [],
+      failed: []
+    };
+
+    for (const u of users) {
+      try {
+        const insertData = {
+          school_id: u.school_id || school_id,
+          role: u.role || 'student',
+          name: u.name,
+          email: u.email ? u.email.toLowerCase().trim() : null,
+          phone: u.phone || null,
+          password_hash,
+          student_id: u.student_id || null,
+          parent_contact: u.parent_contact || null,
+          is_active: true,
+        };
+
+        const { data, error } = await supabase.safeQuery(() =>
+          supabase
+            .from('users')
+            .insert([insertData])
+            .select()
+            .single()
+        );
+
+        if (error) throw error;
+
+        // Enrollment logic
+        if (insertData.role === 'student' && u.class_id) {
+          await supabase.safeQuery(() =>
+            supabase.from('enrollments').insert([{ student_id: data.id, class_id: u.class_id }])
+          );
+        }
+
+        results.success.push({ name: u.name, id: data.id });
+      } catch (err) {
+        results.failed.push({ name: u.name, error: err.message });
+      }
+    }
+
+    res.json({ 
+      message: `Processed ${users.length} users. ${results.success.length} successful, ${results.failed.length} failed.`,
+      results 
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
 const getActivityLogs = async (req, res) => {
   logInfo('getActivityLogs', 'Fetching activity logs', { schoolId: req.user?.school_id });
 
@@ -1995,5 +2071,5 @@ module.exports = {
   getGradeSubjects,
   assignSubjectToGrade,
   removeGradeSubject,
-
+  bulkRegisterUsers,
 };

@@ -18,6 +18,7 @@ router.get('/users', adminController.getUsers);
 router.post('/users', adminController.registerUser);
 router.put('/users/:id', adminController.updateUser);
 router.delete('/users/:id', adminController.deleteUser);
+router.post('/users/bulk', adminController.bulkRegisterUsers);
 
 // School
 router.get('/school', adminController.getSchool);

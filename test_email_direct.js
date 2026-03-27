@@ -7,7 +7,7 @@ async function test() {
   try {
     const result = await sendEmail(
       testEmail,
-      'Test Email from Trespics Academy',
+      'Test Email from Florante Academy',
       '<h1>Test Successful</h1><p>This is a test email to verify the Brevo configuration.</p>'
     );
     console.log('Test result:', result);
