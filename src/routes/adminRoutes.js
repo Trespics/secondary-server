@@ -1,6 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const adminController = require('../controllers/adminController');
+const examResultsController = require('../controllers/examResultsController');
+const multer = require('multer');
+const upload = multer({ dest: 'uploads/' });
 const { authenticate, authorize } = require('../middleware/auth');
 
 router.use(authenticate);
@@ -90,5 +93,10 @@ router.delete('/learning-outcomes/:id', adminController.deleteLearningOutcome);
 router.get('/grade-subjects', adminController.getGradeSubjects);
 router.post('/grade-subjects', adminController.assignSubjectToGrade);
 router.delete('/grade-subjects/:id', adminController.removeGradeSubject);
+
+// Exam Results
+router.get('/exam-results', examResultsController.adminGetResults);
+router.post('/exam-results/bulk', examResultsController.adminSaveBulkResults);
+router.post('/exam-results/upload', upload.single('file'), examResultsController.adminUploadResultsCSV);
 
 module.exports = router;

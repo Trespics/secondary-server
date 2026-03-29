@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const studentController = require('../controllers/studentController');
+const examResultsController = require('../controllers/examResultsController');
 const { authenticate, authorize } = require('../middleware/auth');
 
 router.use(authenticate);
@@ -27,6 +28,7 @@ router.post('/submissions', studentController.submitAssignment);
 // Grades & Results
 router.get('/grades', studentController.getMyGrades);
 router.get('/results', studentController.getResults);
+router.get('/exam-results', examResultsController.studentGetResults);
 router.get('/report-card', studentController.getReportCard);
 
 // Notifications

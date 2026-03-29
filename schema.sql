@@ -293,6 +293,22 @@ CREATE TABLE submissions (
     graded_at TIMESTAMP WITH TIME ZONE
 );
 
+CREATE TABLE exam_results (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    school_id UUID NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+    student_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    class_id UUID NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
+    subject_id UUID NOT NULL REFERENCES subjects(id) ON DELETE CASCADE,
+    exam_type TEXT NOT NULL,
+    term TEXT NOT NULL,
+    year INTEGER NOT NULL,
+    score DECIMAL(5,2),
+    grade TEXT,
+    remarks TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- =============================================
 -- 9. CBC ASSESSMENTS & PORTFOLIOS
 -- =============================================
@@ -399,6 +415,10 @@ CREATE INDEX idx_cats_class ON cats(class_id);
 CREATE INDEX idx_submissions_student ON submissions(student_id);
 CREATE INDEX idx_submissions_assignment ON submissions(assignment_id);
 CREATE INDEX idx_submissions_cat ON submissions(cat_id);
+CREATE INDEX idx_exam_results_school ON exam_results(school_id);
+CREATE INDEX idx_exam_results_student ON exam_results(student_id);
+CREATE INDEX idx_exam_results_class ON exam_results(class_id);
+CREATE INDEX idx_exam_results_subject ON exam_results(subject_id);
 CREATE INDEX idx_strands_subject ON strands(subject_id);
 CREATE INDEX idx_sub_strands_strand ON sub_strands(strand_id);
 CREATE INDEX idx_learning_outcomes_sub_strand ON learning_outcomes(sub_strand_id);

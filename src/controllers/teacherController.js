@@ -719,53 +719,45 @@ const getPerformanceData = async (req, res) => {
     const classIds = [...new Set((classSubjects || []).map(cs => cs.class_id))];
     if (classIds.length === 0) return res.json({ students: [], subjects: [], classes: [] });
 
-    // Fetch all CATs for these classes
-    const { data: cats } = await supabase.safeQuery(() =>
-      supabase
-        .from('cats')
-        .select('*, subjects(name), classes(name)')
-        .in('class_id', classIds)
-    );
-
-    const catIds = (cats || []).map(c => c.id);
-    
-    // Fetch submissions for these CATs
-    const { data: submissions } = await supabase.safeQuery(() =>
-      supabase
-        .from('submissions')
-        .select('*, users(name, student_id)')
-        .in('cat_id', catIds)
-    );
-
     // Fetch enrollments for these classes
     const { data: enrollments } = await supabase.safeQuery(() =>
       supabase
         .from('enrollments')
-        .select('*, users(name, student_id)')
+        .select('*, users(name, student_id), classes(name)')
         .in('class_id', classIds)
+    );
+
+    // Fetch exam results for these classes
+    const { data: allExamResults } = await supabase.safeQuery(() =>
+      supabase
+        .from('exam_results')
+        .select('*')
+        .in('class_id', classIds)
+    );
+
+    // Filter to only the teacher's designated subjects for those classes
+    const examResults = (allExamResults || []).filter(er => 
+      classSubjects.some(cs => cs.class_id === er.class_id && cs.subject_id === er.subject_id)
     );
 
     // Processing logic for Student Grades, Subject Performance, Class Performance
     // Helper to calculate CBC level
     const getCBCLevel = (score) => {
-      if (score >= 80) return 'EE';
-      if (score >= 60) return 'ME';
-      if (score >= 40) return 'AE';
+      if (score >= 75) return 'EE';
+      if (score >= 50) return 'ME';
+      if (score >= 25) return 'AE';
       return 'BE';
     };
 
     // 1. Student Grades
     const studentGrades = (enrollments || []).map(e => {
-        const studentSubmissions = (submissions || []).filter(s => s.student_id === e.student_id);
+        const studentResults = examResults.filter(r => r.student_id === e.student_id);
         const examGrades = {};
         ['CAT 1', 'CAT 2', 'End Term'].forEach(type => {
-            const typeSubmissions = studentSubmissions.filter(s => {
-                const cat = cats.find(c => c.id === s.cat_id);
-                return cat?.exam_type === type;
-            });
-            if (typeSubmissions.length > 0) {
-                const total = typeSubmissions.reduce((acc, curr) => acc + (parseFloat(curr.marks_obtained) / parseFloat(curr.max_score || 1) * 100), 0);
-                examGrades[type] = (total / typeSubmissions.length).toFixed(1);
+            const typeResults = studentResults.filter(r => r.exam_type === type);
+            if (typeResults.length > 0) {
+                const total = typeResults.reduce((acc, curr) => acc + parseFloat(curr.score), 0);
+                examGrades[type] = (total / typeResults.length).toFixed(1);
             } else {
                 examGrades[type] = null;
             }
@@ -782,16 +774,14 @@ const getPerformanceData = async (req, res) => {
 
     // 2. Subject Performance
     const subjectPerformance = (classSubjects || []).map(cs => {
-        const subjectCats = (cats || []).filter(c => c.subject_id === cs.subject_id && c.class_id === cs.class_id);
+        const subjectResults = examResults.filter(r => r.subject_id === cs.subject_id && r.class_id === cs.class_id);
         const performance = {};
         ['CAT 1', 'CAT 2', 'End Term'].forEach(type => {
-            const typeCats = subjectCats.filter(c => c.exam_type === type);
-            const typeCatIds = typeCats.map(c => c.id);
-            const typeSubmissions = (submissions || []).filter(s => typeCatIds.includes(s.cat_id));
+            const typeResults = subjectResults.filter(r => r.exam_type === type);
             
-            if (typeSubmissions.length > 0) {
-                const total = typeSubmissions.reduce((acc, curr) => acc + (parseFloat(curr.marks_obtained) / parseFloat(curr.max_score || 1) * 100), 0);
-                const average = total / typeSubmissions.length;
+            if (typeResults.length > 0) {
+                const total = typeResults.reduce((acc, curr) => acc + parseFloat(curr.score), 0);
+                const average = total / typeResults.length;
                 performance[type] = {
                     average: average.toFixed(1),
                     level: getCBCLevel(average)

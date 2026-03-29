@@ -1,6 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const teacherController = require('../controllers/teacherController');
+const examResultsController = require('../controllers/examResultsController');
+const multer = require('multer');
+const upload = multer({ dest: 'uploads/' });
 const { authenticate, authorize } = require('../middleware/auth');
 
 router.use(authenticate);
@@ -52,5 +55,10 @@ router.post('/notifications', teacherController.createNotification);
 router.patch('/notifications/mark-all-read', teacherController.markAllNotificationsAsRead);
 router.patch('/notifications/:id/read', teacherController.markNotificationAsRead);
 router.delete('/notifications/:id', teacherController.deleteNotification);
+
+// Exam Results
+router.get('/exam-results', examResultsController.teacherGetResults);
+router.post('/exam-results/bulk', examResultsController.teacherSaveBulkResults);
+router.post('/exam-results/upload', upload.single('file'), examResultsController.teacherUploadResultsCSV);
 
 module.exports = router;
