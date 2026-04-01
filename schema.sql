@@ -40,6 +40,7 @@ CREATE TABLE users (
     password_hash TEXT NOT NULL,
     avatar_url TEXT,
     student_id TEXT UNIQUE,
+    parent_name TEXT,
     parent_contact TEXT,
     is_active BOOLEAN DEFAULT TRUE,
     reset_password_token TEXT,

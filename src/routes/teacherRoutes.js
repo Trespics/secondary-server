@@ -56,6 +56,13 @@ router.patch('/notifications/mark-all-read', teacherController.markAllNotificati
 router.patch('/notifications/:id/read', teacherController.markNotificationAsRead);
 router.delete('/notifications/:id', teacherController.deleteNotification);
 
+// Messages
+router.get('/messages', teacherController.getMessages);
+router.get('/messages/parents', teacherController.getParents);
+router.get('/messages/:parentId', teacherController.getConversation);
+router.post('/messages', teacherController.sendMessage);
+router.put('/messages/:id/read', teacherController.markMessageRead);
+
 // Exam Results
 router.get('/exam-results', examResultsController.teacherGetResults);
 router.post('/exam-results/bulk', examResultsController.teacherSaveBulkResults);

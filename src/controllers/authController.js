@@ -4,9 +4,13 @@ const supabase = require('../config/supabase');
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
-const { sendEmail } = require('../services/brevoService');
+const { sendEmail, sendSMS } = require('../services/brevoService');
      
+// In-memory store for OTPs
+// Structure: { phoneNumber: { otp: string, expiresAt: number } }
+const otpStore = new Map();
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+
 
 const login = async (req, res) => {
   const { email, password } = req.body;
@@ -278,4 +282,163 @@ const changePassword = async (req, res) => {
   }
 };
 
-module.exports = { login, forgotPassword, resetPassword, changePassword };
+const sendOtp = async (req, res) => {
+  const { phone } = req.body;
+  if (!phone) {
+    return res.status(400).json({ error: 'Phone number is required' });
+  }
+
+  try {
+    // 1. Check if ANY student has this phone number as parent_contact
+    const { data: students, error: studentError } = await supabase.safeQuery(() =>
+      supabase
+        .from('users')
+        .select('id, school_id')
+        .eq('role', 'student')
+        .eq('parent_contact', phone)
+    );
+
+    if (studentError) throw studentError;
+
+    // 2. Or check if a parent already exists with this phone
+    const { data: existingParent, error: parentError } = await supabase.safeQuery(() =>
+      supabase
+        .from('users')
+        .select('id')
+        .eq('role', 'parent')
+        .eq('phone', phone)
+        .single()
+    );
+
+    if (!students?.length && (!existingParent && parentError?.code === 'PGRST116')) {
+        return res.status(404).json({ error: 'No student found linked to this phone number' });
+    }
+
+    // Generate a secure 6-digit OTP
+    const otp = crypto.randomInt(100000, 999999).toString();
+    const expiresAt = Date.now() + 5 * 60 * 1000; // 5 minutes
+
+    otpStore.set(phone, { otp, expiresAt });
+
+    const messageContent = `Your verification code for Florante School is ${otp}. It expires in 5 minutes.`;
+
+    await sendSMS(phone, messageContent);
+
+    console.log(`✅ Brevo SMS OTP request dispatched for ${phone}`);
+    res.json({ message: 'OTP sent successfully' });
+  } catch (error) {
+    console.error('Send OTP error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+const verifyOtp = async (req, res) => {
+  const { phone, otp } = req.body;
+  
+  if (!phone || !otp) {
+    return res.status(400).json({ error: 'Phone and OTP are required' });
+  }
+
+  try {
+    // Verify local OTP
+    const storedOtpData = otpStore.get(phone);
+    if (!storedOtpData) {
+      return res.status(400).json({ error: 'No active OTP session found for this number' });
+    }
+
+    if (Date.now() > storedOtpData.expiresAt) {
+      otpStore.delete(phone);
+      return res.status(400).json({ error: 'OTP has expired' });
+    }
+
+    if (storedOtpData.otp !== otp) {
+      return res.status(400).json({ error: 'Invalid OTP' });
+    }
+
+    // Clear the OTP once validated
+    otpStore.delete(phone);
+
+    // 1. Check if parent user exists in our custom 'users' table
+    let { data: parentUser, error: parentError } = await supabase.safeQuery(() =>
+      supabase
+        .from('users')
+        .select('*, schools(*)')
+        .eq('role', 'parent')
+        .eq('phone', phone)
+        .single()
+    );
+
+    if (!parentUser && parentError.code === 'PGRST116') {
+      // 2. Parent doesn't exist, create them!
+      const { data: students, error: studentError } = await supabase.safeQuery(() =>
+        supabase
+          .from('users')
+          .select('id, school_id, parent_name')
+          .eq('role', 'student')
+          .eq('parent_contact', phone)
+      );
+      
+      if (studentError) throw studentError;
+
+      if (!students || students.length === 0) {
+        return res.status(400).json({ error: 'Cannot create parent: no linked student found' });
+      }
+
+      const school_id = students[0].school_id;
+      const parentName = students[0].parent_name || 'Parent';
+
+      // Generate ID manually since we bypass Supabase Auth
+      const newUserId = crypto.randomUUID(); 
+      // Generate a random high-entropy dummy password hash
+      const dummyPassword = crypto.randomBytes(32).toString('hex');
+      const dummyPasswordHash = await bcrypt.hash(dummyPassword, 10);
+
+      const { data: newUser, error: createError } = await supabase.safeQuery(() =>
+        supabase
+          .from('users')
+          .insert([{
+            id: newUserId,
+            school_id,
+            role: 'parent',
+            name: parentName,
+            phone: phone,
+            password_hash: dummyPasswordHash,
+            is_active: true
+          }])
+          .select('*, schools(*)')
+          .single()
+      );
+
+      if (createError) {
+          throw createError;
+      } else {
+          parentUser = newUser;
+      }
+      // Note: We no longer insert into 'parents' table here as student matching is dynamic
+    } else if (parentError && parentError.code !== 'PGRST116') {
+      throw parentError;
+    }
+
+    if (!parentUser.is_active) {
+      return res.status(403).json({ error: 'Account is deactivated' });
+    }
+
+    const token = jwt.sign(
+      { id: parentUser.id, role: parentUser.role, school_id: parentUser.school_id },
+      JWT_SECRET,
+      { expiresIn: '365d' }
+    );
+
+    const { password_hash, ...safeUser } = parentUser;
+
+    res.json({
+      token,
+      user: safeUser,
+    });
+  } catch (error) {
+    console.error('Verify OTP error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+module.exports = { login, forgotPassword, resetPassword, changePassword, sendOtp, verifyOtp };

@@ -20,6 +20,7 @@ const superAdminRoutes = require('./src/routes/superAdminRoutes');
 const cbcRoutes = require('./src/routes/cbcRoutes');
 const libraryRoutes = require('./src/routes/libraryRoutes');
 const publicRoutes = require('./src/routes/publicRoutes');
+const parentRoutes = require('./src/routes/parentRoutes');
 const { initCronJobs } = require('./src/services/cronService');
 
 
@@ -51,6 +52,7 @@ app.use('/api/superadmin', superAdminRoutes);
 app.use('/api/cbc', cbcRoutes);
 app.use('/api/library', libraryRoutes);
 app.use('/api/public', publicRoutes);
+app.use('/api/parent', parentRoutes);
 
 
 // Base Route

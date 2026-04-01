@@ -23,7 +23,7 @@ const logSuccess = (context, message, data = {}) => {
 
 // ─── User Registration (Admin registers teachers + students) ─────────
 const registerUser = async (req, res) => {
-  const { school_id, role, name, email, phone, password: providedPassword, student_id, parent_contact, class_id } = req.body;
+  const { school_id, role, name, email, phone, password: providedPassword, student_id, parent_name, parent_contact, class_id } = req.body;
   const password = providedPassword || '12345678';
   
   logInfo('registerUser', 'Registration attempt', { 
@@ -33,9 +33,14 @@ const registerUser = async (req, res) => {
     school_id: school_id || req.user?.school_id,
   });
 
-  if (!name || !email || !role) {
+  if (!name || !role) {
     logWarning('registerUser', 'Missing required fields');
-    return res.status(400).json({ error: 'Name, email, and role are required' });
+    return res.status(400).json({ error: 'Name and role are required' });
+  }
+
+  if (role !== 'student' && !email) {
+    logWarning('registerUser', 'Missing email for non-student');
+    return res.status(400).json({ error: 'Email is required for teachers and admins' });
   }
 
   try {
@@ -50,7 +55,8 @@ const registerUser = async (req, res) => {
       phone: (role === 'student') ? null : phone,
       password_hash,
       student_id: (role === 'student' && student_id && student_id.trim() !== '') ? student_id : null,
-      parent_contact: (role === 'student') ? null : parent_contact,
+      parent_name: role === 'student' ? parent_name : null,
+      parent_contact: role === 'student' ? parent_contact : null,
       is_active: true,
     };
 
@@ -61,7 +67,7 @@ const registerUser = async (req, res) => {
         .select('id, school_id, role, name, email, phone, student_id, parent_contact, is_active, created_at')
         .single()
     );
-
+   
     if (error) {
       if (error.code === '23505') {
         const detail = error.detail || '';
@@ -137,7 +143,7 @@ const getUsers = async (req, res) => {
   try {
     let query = supabase
       .from('users')
-      .select('id, school_id, role, name, email, phone, student_id, parent_contact, is_active, avatar_url, created_at')
+      .select('id, school_id, role, name, email, phone, student_id, parent_name, parent_contact, is_active, avatar_url, created_at')
       .order('created_at', { ascending: false });
 
     // Filter by school if user has one
@@ -190,6 +196,7 @@ const updateUser = async (req, res) => {
       updateData.email = updates.email ? updates.email.toLowerCase().trim() : null;
     }
     if (updates.phone !== undefined) updateData.phone = updates.phone;
+    if (updates.parent_name !== undefined) updateData.parent_name = updates.parent_name;
     if (updates.parent_contact !== undefined) updateData.parent_contact = updates.parent_contact;
 
     logInfo('updateUser', 'Applying updates', updateData);
@@ -199,7 +206,7 @@ const updateUser = async (req, res) => {
         .from('users')
         .update(updateData)
         .eq('id', id)
-        .select('id, school_id, role, name, email, phone, student_id, parent_contact, is_active, avatar_url, created_at')
+        .select('id, school_id, role, name, email, phone, student_id, parent_name, parent_contact, is_active, avatar_url, created_at')
         .single()
     );
 

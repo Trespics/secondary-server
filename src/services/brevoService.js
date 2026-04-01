@@ -49,7 +49,9 @@ const sendEmail = async (to, subject, htmlContent, sender = null) => {
  */
 const sendSMS = async (to, content) => {
   const sendTransacSms = new SibApiV3Sdk.SendTransacSms();
-  sendTransacSms.sender = "Florante";
+  let senderName = process.env.BREVO_SENDER_NAME || 'Florante';
+  senderName = senderName.replace(/[^a-zA-Z0-9]/g, '').substring(0, 11);
+  sendTransacSms.sender = senderName || 'Florante';
   sendTransacSms.recipient = to;
   sendTransacSms.content = content;
 

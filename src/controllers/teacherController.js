@@ -854,6 +854,221 @@ const markAllNotificationsAsRead = async (req, res) => {
     res.status(400).json({ error: error.message });
   }
 };
+// ─── Messaging ───────────────────────────────────────────────────────
+
+const getMessages = async (req, res) => {
+  try {
+    const { data, error } = await supabase.safeQuery(() =>
+      supabase
+        .from('messages')
+        .select('*, sender:users!parent_messages_sender_id_fkey(id, name, avatar_url, role, phone), receiver:users!parent_messages_receiver_id_fkey(id, name, avatar_url, role, phone)')
+        .or(`sender_id.eq.${req.user.id},receiver_id.eq.${req.user.id}`)
+        .order('created_at', { ascending: false })
+    );
+
+    if (error) throw error;
+
+    const conversations = {};
+    (data || []).forEach(msg => {
+      const partnerId = msg.sender_id === req.user.id ? msg.receiver_id : msg.sender_id;
+      const partner = msg.sender_id === req.user.id ? msg.receiver : msg.sender;
+
+      if (!conversations[partnerId]) {
+        conversations[partnerId] = {
+          partner,
+          lastMessage: msg,
+          unreadCount: 0,
+          messages: []
+        };
+      }
+
+      conversations[partnerId].messages.push(msg);
+
+      if (!msg.read_status && msg.receiver_id === req.user.id) {
+        conversations[partnerId].unreadCount++;
+      }
+    });
+
+    // Resolve parent names from student records
+    const convList = Object.values(conversations);
+    const parentPhones = convList
+      .filter((c) => c.partner?.role === 'parent' && c.partner?.phone)
+      .map((c) => c.partner.phone);
+
+    if (parentPhones.length > 0) {
+      const { data: students } = await supabase.safeQuery(() =>
+        supabase
+          .from('users')
+          .select('parent_name, parent_contact')
+          .eq('role', 'student')
+          .in('parent_contact', parentPhones)
+      );
+
+      if (students?.length) {
+        const nameMap = {};
+        students.forEach(s => {
+          if (s.parent_name && s.parent_contact) nameMap[s.parent_contact] = s.parent_name;
+        });
+        convList.forEach((c) => {
+          if (c.partner?.role === 'parent' && c.partner?.phone && nameMap[c.partner.phone]) {
+            c.partner.name = nameMap[c.partner.phone];
+          }
+        });
+      }
+    }
+
+    res.json(convList);
+  } catch (error) {
+    console.error('Teacher getMessages error:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const getConversation = async (req, res) => {
+  try {
+    const { parentId } = req.params;
+
+    const { data, error } = await supabase.safeQuery(() =>
+      supabase
+        .from('messages')
+        .select('*, sender:users!parent_messages_sender_id_fkey(id, name, avatar_url)')
+        .or(`and(sender_id.eq.${req.user.id},receiver_id.eq.${parentId}),and(sender_id.eq.${parentId},receiver_id.eq.${req.user.id})`)
+        .order('created_at', { ascending: true })
+    );
+
+    if (error) throw error;
+
+    await supabase.safeQuery(() =>
+      supabase
+        .from('messages')
+        .update({ read_status: true })
+        .eq('sender_id', parentId)
+        .eq('receiver_id', req.user.id)
+        .eq('read_status', false)
+    );
+
+    res.json(data || []);
+  } catch (error) {
+    console.error('Teacher getConversation error:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const sendMessage = async (req, res) => {
+  try {
+    const { receiver_id, message, file_url, file_type } = req.body;
+
+    if (!receiver_id || (!message && !file_url)) {
+      return res.status(400).json({ error: 'Receiver and message/file are required' });
+    }
+
+    const { data, error } = await supabase.safeQuery(() =>
+      supabase
+        .from('messages')
+        .insert([{
+          school_id: req.user.school_id,
+          sender_id: req.user.id,
+          receiver_id,
+          message: message || '',
+          file_url: file_url || null,
+          file_type: file_type || null,
+          read_status: false
+        }])
+        .select('*, sender:users!parent_messages_sender_id_fkey(id, name, avatar_url)')
+        .single()
+    );
+
+    if (error) throw error;
+    res.status(201).json(data);
+  } catch (error) {
+    console.error('Teacher sendMessage error:', error);
+    res.status(400).json({ error: error.message });
+  }
+};
+
+const markMessageRead = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { error } = await supabase.safeQuery(() =>
+      supabase
+        .from('messages')
+        .update({ read_status: true })
+        .eq('id', id)
+        .eq('receiver_id', req.user.id)
+    );
+
+    if (error) throw error;
+    res.json({ message: 'Message marked as read' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const getParents = async (req, res) => {
+  try {
+    // 1. Get teacher's classes
+    const { data: classSubjects } = await supabase.safeQuery(() =>
+      supabase
+        .from('class_subjects')
+        .select('class_id')
+        .eq('teacher_id', req.user.id)
+    );
+
+    const classIds = [...new Set((classSubjects || []).map(cs => cs.class_id))];
+    if (classIds.length === 0) return res.json([]);
+
+    // 2. Get students in these classes
+    const { data: enrollments } = await supabase.safeQuery(() =>
+      supabase
+        .from('enrollments')
+        .select('student_id')
+        .in('class_id', classIds)
+    );
+
+    const studentIds = [...new Set((enrollments || []).map(e => e.student_id))];
+    if (studentIds.length === 0) return res.json([]);
+
+    // 3. Get student details to find parent info
+    const { data: students } = await supabase.safeQuery(() =>
+      supabase
+        .from('users')
+        .select('id, name, parent_name, parent_contact')
+        .in('id', studentIds)
+        .eq('role', 'student')
+    );
+
+    const parentContacts = [...new Set((students || []).map(s => s.parent_contact).filter(c => !!c))];
+    if (parentContacts.length === 0) return res.json([]);
+
+    // 4. Find valid parent users by phone/contact
+    const { data: parents, error } = await supabase.safeQuery(() =>
+      supabase
+        .from('users')
+        .select('id, name, email, avatar_url, phone')
+        .eq('role', 'parent')
+        .eq('school_id', req.user.school_id)
+        .in('phone', parentContacts)
+    );
+
+    if (error) throw error;
+
+    // Map students to parents and resolve real names
+    const result = (parents || []).map(p => {
+      const parentStudents = (students || []).filter(s => s.parent_contact === p.phone);
+      const resolvedName = parentStudents[0]?.parent_name || p.name;
+      return {
+        ...p,
+        name: resolvedName,
+        children: parentStudents.map(s => s.name)
+      };
+    });
+
+    res.json(result);
+  } catch (error) {
+    console.error('Teacher getParents error:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
 
 module.exports = {
   getDashboardStats,
@@ -882,5 +1097,11 @@ module.exports = {
   deleteNotification,
   markNotificationAsRead,
   markAllNotificationsAsRead,
-  getPerformanceData
+  getPerformanceData,
+  // Messaging
+  getMessages,
+  getConversation,
+  sendMessage,
+  markMessageRead,
+  getParents
 };
